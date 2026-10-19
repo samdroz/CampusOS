@@ -74,10 +74,83 @@ jobs:
             backend/desktop_entry.py
           Copy-Item "dist\campusos-backend.exe" -Destination "frontend\src-tauri\binaries\campusos-backend-x86_64-pc-windows-msvc.exe" -Force
 
+      - name: Install and Verify NSIS
+        run: |
+          Write-Host "Installing NSIS via Chocolatey..." -ForegroundColor Cyan
+          choco install nsis -y --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Chocolatey NSIS installation failed with exit code $LASTEXITCODE."
+            exit 1
+          }
+
+          $nsisCandidates = @(
+            "${env:ProgramFiles(x86)}\NSIS",
+            "$env:ProgramFiles\NSIS",
+            "$env:LOCALAPPDATA\NSIS\nsis-3.10\Bin"
+          )
+          $nsisDir = $nsisCandidates | Where-Object { Test-Path "$_\makensis.exe" } | Select-Object -First 1
+          if (-not $nsisDir) {
+            $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
+            if ($cmd) {
+              $nsisDir = Split-Path $cmd.Source
+            }
+          }
+
+          if (-not $nsisDir -or -not (Test-Path "$nsisDir\makensis.exe")) {
+            Write-Error "FATAL: makensis.exe could not be located after NSIS installation."
+            exit 1
+          }
+
+          Write-Host "NSIS directory located: $nsisDir" -ForegroundColor Green
+          Write-Output "$nsisDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:PATH = "$nsisDir;$env:PATH"
+
+          Write-Host "Verifying makensis installation:" -ForegroundColor Cyan
+          & makensis /VERSION
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "FATAL: makensis /VERSION verification failed with exit code $LASTEXITCODE."
+            exit 1
+          }
+
       - name: Build Native Windows Launcher & Standalone Installer
         run: |
+          Write-Host "Compiling native Windows launcher (dist\CampusOS.exe)..." -ForegroundColor Cyan
           & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /win32icon:"frontend\src-tauri\icons\icon.ico" /out:"dist\CampusOS.exe" "launcher\Program.cs"
-          makensis "installer\CampusOS.nsi"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "C# Launcher compilation failed with exit code $LASTEXITCODE."
+            exit 1
+          }
+          if (-not (Test-Path "dist\CampusOS.exe")) {
+            Write-Error "FATAL: dist\CampusOS.exe was not created."
+            exit 1
+          }
+
+          # Verify makensis availability in current session or standard paths
+          $makensisCmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          $makensisExe = if ($makensisCmd) { $makensisCmd.Source } else {
+            @("${env:ProgramFiles(x86)}\NSIS\makensis.exe", "$env:ProgramFiles\NSIS\makensis.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+
+          if (-not $makensisExe -or -not (Test-Path $makensisExe)) {
+            Write-Error "FATAL: makensis compiler not found in PATH or standard installation directories."
+            exit 1
+          }
+
+          # Clean up any stale installer before compiling
+          Remove-Item -Path "dist\CampusOS_1.0.0_Setup.exe" -Force -ErrorAction SilentlyContinue
+
+          Write-Host "Compiling standalone installer with $makensisExe..." -ForegroundColor Cyan
+          & $makensisExe "installer\CampusOS.nsi"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "makensis installer compilation failed with exit code $LASTEXITCODE."
+            exit 1
+          }
+
+          if (-not (Test-Path "dist\CampusOS_1.0.0_Setup.exe")) {
+            Write-Error "FATAL: Expected installer package dist\CampusOS_1.0.0_Setup.exe was not generated."
+            exit 1
+          }
+          Write-Host "Standalone installer generated: dist\CampusOS_1.0.0_Setup.exe" -ForegroundColor Green
 
       - name: Set up Rust Stable Toolchain (MSVC)
         uses: dtolnay/rust-toolchain@stable
