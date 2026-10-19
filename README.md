@@ -123,7 +123,7 @@ To contribute to CampusOS or run it directly from source code:
 
 ### Prerequisites
 - **Python:** 3.11 or higher
-- **Node.js:** 20.x or higher (`npm` 10+)
+- **Node.js:** 22.x or higher (`npm` 10+)
 - **Git**
 
 ### 1. Clone the Repository
@@ -182,7 +182,7 @@ To compile the standalone Windows installer locally:
 
 ### Build Prerequisites:
 - Python 3.11 with `pyinstaller` installed in your virtual environment.
-- Node.js 20+ and npm.
+- Node.js 22+ and npm.
 - Microsoft .NET Framework (includes `csc.exe` for the launcher).
 - NSIS 3.x (`makensis.exe`) installed on your system.
 
