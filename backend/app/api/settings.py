@@ -7,9 +7,9 @@ from backend.app.models.models import Setting
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
 DEFAULT_SETTINGS = {
-    "student_name": "Alex Morgan",
-    "student_id": "STU-8829",
-    "major": "Computer Science & Engineering",
+    "student_name": "",
+    "student_id": "",
+    "major": "",
     "attendance_threshold": "75.0",
     "week_start": "monday",
     "theme": "dark",

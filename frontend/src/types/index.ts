@@ -175,3 +175,66 @@ export interface SearchResult {
   query: string;
   results: SearchItem[];
 }
+
+export interface StudentProfile {
+  id?: number;
+  full_name: string;
+  preferred_name?: string | null;
+  roll_number?: string | null;
+  register_number?: string | null;
+  email?: string | null;
+
+  institution?: string | null;
+  degree?: string | null;
+  department?: string | null;
+  admission_year?: string | null;
+  academic_year?: string | null;
+  semester?: string | null;
+  university?: string | null;
+
+  attendance_target: number;
+  onboarding_completed: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface OnboardingSubjectInput {
+  name: string;
+  code: string;
+  credits: number;
+  instructor?: string;
+  color: string;
+}
+
+export interface OnboardingExamInput {
+  subject_code: string;
+  title: string;
+  exam_date: string;
+  start_time: string;
+  end_time?: string;
+  location?: string;
+}
+
+export interface OnboardingAssignmentInput {
+  subject_code: string;
+  title: string;
+  due_date: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}
+
+export interface OnboardingScheduleInput {
+  subject_code: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  room?: string;
+  session_type: string;
+}
+
+export interface OnboardingPayload {
+  profile: StudentProfile;
+  subjects: OnboardingSubjectInput[];
+  exams: OnboardingExamInput[];
+  assignments: OnboardingAssignmentInput[];
+  sessions: OnboardingScheduleInput[];
+}

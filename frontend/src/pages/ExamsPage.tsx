@@ -6,16 +6,14 @@ import {
   Calendar,
   MapPin,
   Percent,
-  FileText,
-  AlertTriangle,
   Edit2,
   Trash2,
   X,
-  Sparkles,
 } from 'lucide-react';
 import { Exam, Subject } from '../types';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { AcademicLoader } from '../components/AcademicLoader';
 
 interface ExamsPageProps {
   exams: Exam[];
@@ -132,16 +130,16 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-            Examinations & Assessment Schedules
+          <h2 className="text-xl sm:text-2xl font-bold text-txt-primary tracking-tight">
+            Examinations
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Stay prepared for midterms, finals, practical labs, and oral defences with live countdowns.
+          <p className="text-xs sm:text-sm text-txt-secondary mt-1">
+            Track midterms, finals, practical labs, and assessment countdowns.
           </p>
         </div>
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-white bg-brand-indigo hover:bg-indigo-500 rounded-xl transition-all shadow-glow-indigo self-start sm:self-auto"
+          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white bg-accent hover:bg-accent-hover rounded-xl transition-all shadow-sm self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Add Exam</span>
@@ -149,21 +147,25 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
       </div>
 
       {/* Tabs and Filters */}
-      <div className="glass-panel rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="app-panel rounded-2xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center space-x-2">
-          <div className="bg-campus-900 border border-campus-700 p-0.5 rounded-xl flex items-center text-xs">
+          <div className="bg-surface-elevated border border-border-subtle p-0.5 rounded-xl flex items-center text-xs">
             <button
               onClick={() => setTab('upcoming')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                tab === 'upcoming' ? 'bg-brand-indigo text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                tab === 'upcoming'
+                  ? 'bg-accent text-white shadow-sm font-semibold'
+                  : 'text-txt-secondary hover:text-txt-primary'
               }`}
             >
               Upcoming ({exams.filter((e) => !e.is_past).length})
             </button>
             <button
               onClick={() => setTab('past')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                tab === 'past' ? 'bg-brand-indigo text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                tab === 'past'
+                  ? 'bg-accent text-white shadow-sm font-semibold'
+                  : 'text-txt-secondary hover:text-txt-primary'
               }`}
             >
               Past ({exams.filter((e) => e.is_past).length})
@@ -173,7 +175,7 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
           <select
             value={subjectFilter}
             onChange={(e) => setSubjectFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs bg-campus-900 border border-campus-700 rounded-xl text-slate-200 focus:outline-none focus:border-brand-indigo"
+            className="px-2.5 py-1.5 text-xs bg-surface-elevated border border-border-default rounded-xl text-txt-secondary focus:outline-none focus:border-accent"
           >
             <option value="all">All Courses</option>
             {subjects.map((sub) => (
@@ -185,61 +187,55 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
         </div>
 
         <div className="relative max-w-sm w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-txt-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search exams..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-campus-900 border border-campus-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-brand-indigo"
+            className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary placeholder-txt-muted focus:outline-none focus:border-accent"
           />
         </div>
       </div>
 
       {/* Exam Cards */}
       {loading && exams.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-pulse">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-44 bg-campus-850 rounded-2xl"></div>
-          ))}
-        </div>
+        <AcademicLoader module="exams" message="Retrieving upcoming examination schedule..." />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Clock}
           title={tab === 'upcoming' ? 'No upcoming examinations' : 'No past examinations'}
           description={
             tab === 'upcoming'
-              ? 'You have no examinations on the calendar. Enjoy stress-free learning!'
+              ? 'You have no examinations scheduled on the calendar.'
               : 'Past exam records will appear here after their scheduled dates.'
           }
           actionText={tab === 'upcoming' && !search ? 'Schedule An Examination' : undefined}
           onAction={openCreateModal}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((exam) => {
             const isImminent = exam.is_imminent;
 
             return (
               <div
                 key={exam.id}
-                className={`glass-card p-5 rounded-2xl flex flex-col justify-between group transition-all relative overflow-hidden ${
+                className={`app-card p-4 rounded-2xl flex flex-col justify-between group transition-all relative overflow-hidden ${
                   isImminent
-                    ? 'border-amber-500/40 bg-amber-950/10 shadow-glow-rose'
+                    ? 'border-semantic-warning/40'
                     : exam.is_past
-                    ? 'opacity-70'
+                    ? 'opacity-65'
                     : ''
                 }`}
               >
                 <div>
                   <div className="flex items-start justify-between">
                     <span
-                      className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm"
+                      className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md"
                       style={{
-                        backgroundColor: `${exam.subject_color || '#6366F1'}20`,
-                        color: exam.subject_color || '#6366F1',
-                        borderColor: `${exam.subject_color || '#6366F1'}40`,
-                        borderWidth: '1px',
+                        backgroundColor: `${exam.subject_color || '#4F46E5'}15`,
+                        color: exam.subject_color || '#4F46E5',
                       }}
                     >
                       {exam.subject_code}
@@ -248,36 +244,36 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                     <div className="flex items-center space-x-1">
                       {!exam.is_past ? (
                         <span
-                          className={`font-mono text-xs font-bold px-2 py-0.5 rounded-full ${
+                          className={`font-mono text-xs font-medium px-2 py-0.5 rounded-full ${
                             exam.days_remaining <= 1
-                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                              ? 'bg-semantic-danger/10 text-semantic-danger border border-semantic-danger/25'
                               : isImminent
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                              : 'bg-brand-indigo/20 text-indigo-300 border border-brand-indigo/30'
+                              ? 'bg-semantic-warning/10 text-semantic-warning border border-semantic-warning/25'
+                              : 'bg-surface-elevated text-txt-secondary border border-border-subtle'
                           }`}
                         >
                           {exam.days_remaining === 0
                             ? 'Today!'
                             : exam.days_remaining === 1
                             ? 'Tomorrow!'
-                            : `In ${exam.days_remaining} days`}
+                            : `In ${exam.days_remaining}d`}
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-campus-800 text-slate-400 border border-campus-700">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-txt-muted border border-border-subtle">
                           Completed
                         </span>
                       )}
 
                       <button
                         onClick={() => openEditModal(exam)}
-                        className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-campus-800 transition-colors ml-1"
+                        className="p-1.5 text-txt-muted hover:text-txt-primary rounded-lg hover:bg-surface-elevated transition-colors ml-1"
                         title="Edit"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(exam)}
-                        className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-campus-800 transition-colors"
+                        className="p-1.5 text-txt-muted hover:text-semantic-danger rounded-lg hover:bg-surface-elevated transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -285,32 +281,32 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                     </div>
                   </div>
 
-                  <h3 className="text-base font-bold text-white mt-3">{exam.title}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{exam.subject_name}</p>
+                  <h3 className="text-sm font-semibold text-txt-primary mt-2.5">{exam.title}</h3>
+                  <p className="text-xs text-txt-secondary mt-0.5">{exam.subject_name}</p>
 
-                  <div className="mt-4 pt-3 border-t border-campus-700/60 space-y-2 text-xs text-slate-300">
+                  <div className="mt-3 pt-3 border-t border-border-subtle space-y-1.5 text-xs text-txt-secondary">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <Calendar className="w-3.5 h-3.5 text-txt-muted" />
                       <span>{exam.exam_date}</span>
                       <span>·</span>
                       <span className="font-mono">{exam.start_time}{exam.end_time ? ` - ${exam.end_time}` : ''}</span>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <MapPin className="w-3.5 h-3.5 text-txt-muted" />
                       <span>{exam.location || 'Hall / Room TBA'}</span>
                     </div>
 
                     {exam.weight !== null && exam.weight !== undefined && exam.weight > 0 && (
-                      <div className="flex items-center space-x-2 text-slate-400">
+                      <div className="flex items-center space-x-2 text-txt-muted">
                         <Percent className="w-3.5 h-3.5" />
-                        <span>Weight: {exam.weight}% of Final Grade</span>
+                        <span>Weight: {exam.weight}% of Grade</span>
                       </div>
                     )}
                   </div>
 
                   {exam.notes && (
-                    <div className="mt-3 p-2.5 rounded-xl bg-campus-900/60 border border-campus-700/60 text-xs text-slate-400">
+                    <div className="mt-2.5 p-2 rounded-xl bg-surface-elevated border border-border-subtle text-xs text-txt-secondary">
                       <p className="italic">{exam.notes}</p>
                     </div>
                   )}
@@ -323,29 +319,29 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
 
       {/* Create / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-campus-900 border border-campus-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scaleIn">
-            <div className="flex items-center justify-between pb-4 border-b border-campus-700/60">
-              <h3 className="text-lg font-bold text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-surface border border-border-default rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scaleIn">
+            <div className="flex items-center justify-between pb-4 border-b border-border-subtle">
+              <h3 className="text-base font-semibold text-txt-primary">
                 {editingExam ? 'Edit Examination' : 'Schedule Examination'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="text-txt-muted hover:text-txt-primary p-1 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {formError && (
-              <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+              <div className="mt-4 p-3 rounded-xl bg-semantic-danger/10 border border-semantic-danger/20 text-xs text-semantic-danger">
                 {formError}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-medium text-txt-secondary mb-1">
                   Exam Title *
                 </label>
                 <input
@@ -354,20 +350,20 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Midterm 1: Advanced Algorithms"
-                  className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                  className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-txt-secondary mb-1">
                     Subject *
                   </label>
                   <select
                     required
                     value={formData.subject_id}
                     onChange={(e) => setFormData({ ...formData, subject_id: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                   >
                     {subjects.map((sub) => (
                       <option key={sub.id} value={sub.id}>
@@ -377,22 +373,22 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Exam Date (YYYY-MM-DD) *
+                  <label className="block text-xs font-medium text-txt-secondary mb-1">
+                    Exam Date *
                   </label>
                   <input
                     type="date"
                     required
                     value={formData.exam_date}
                     onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-txt-secondary mb-1">
                     Start Time *
                   </label>
                   <input
@@ -400,25 +396,25 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                     required
                     value={formData.start_time}
                     onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-txt-secondary mb-1">
                     End Time
                   </label>
                   <input
                     type="time"
                     value={formData.end_time}
                     onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-txt-secondary mb-1">
                     Location / Room
                   </label>
                   <input
@@ -426,11 +422,11 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g. Auditorium Hall B"
-                    className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-txt-secondary mb-1">
                     Weight (%)
                   </label>
                   <input
@@ -439,13 +435,13 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                     max="100"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                    className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-medium text-txt-secondary mb-1">
                   Permitted Materials / Notes
                 </label>
                 <textarea
@@ -453,22 +449,22 @@ export const ExamsPage: React.FC<ExamsPageProps> = ({
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="e.g. One cheat sheet allowed, bring scientific calculator..."
-                  className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                  className="w-full px-3 py-2 text-xs sm:text-sm bg-surface-elevated border border-border-default rounded-xl text-txt-primary focus:outline-none focus:border-accent"
                 />
               </div>
 
-              <div className="pt-3 border-t border-campus-700/60 flex items-center justify-end space-x-3">
+              <div className="pt-3 border-t border-border-subtle flex items-center justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-campus-800 rounded-xl"
+                  className="px-4 py-2 text-xs font-medium text-txt-secondary hover:text-txt-primary bg-surface-elevated border border-border-subtle rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-brand-indigo hover:bg-indigo-500 rounded-xl shadow-glow-indigo transition-all disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-accent hover:bg-accent-hover rounded-xl shadow-sm transition-all disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : editingExam ? 'Save Changes' : 'Schedule Exam'}
                 </button>

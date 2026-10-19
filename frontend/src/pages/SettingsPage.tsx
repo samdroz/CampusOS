@@ -1,53 +1,105 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Settings,
   User,
-  ShieldAlert,
-  Calendar,
+  Sun,
+  Moon,
   Download,
   Upload,
   Database,
-  Moon,
-  Sparkles,
-  CheckCircle2,
+  Calendar,
   AlertTriangle,
+  RotateCcw,
+  ShieldCheck,
+  GraduationCap,
+  Sparkles,
+  Trash2,
 } from 'lucide-react';
-import { SettingsMap } from '../types';
+import { SettingsMap, StudentProfile } from '../types';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 interface SettingsPageProps {
   settings: SettingsMap;
+  currentTheme: 'dark' | 'light';
+  onToggleTheme: (theme: 'dark' | 'light') => void;
   onUpdateSettings: (newSettings: Partial<SettingsMap>) => Promise<void>;
   onResetDemoData: () => Promise<void>;
+  onLaunchOnboarding?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   settings,
+  currentTheme,
+  onToggleTheme,
   onUpdateSettings,
   onResetDemoData,
+  onLaunchOnboarding,
 }) => {
-  const { success, error } = useToast();
-  const [formData, setFormData] = useState({
-    student_name: settings.student_name || 'Alex Morgan',
-    student_id: settings.student_id || 'STU-8829',
-    major: settings.major || 'Computer Science & Engineering',
-    attendance_threshold: settings.attendance_threshold || '75.0',
-    week_start: settings.week_start || 'monday',
-    theme: settings.theme || 'dark',
+  const { success, error, info } = useToast();
+
+  // Full Student Profile State
+  const [profile, setProfile] = useState<StudentProfile>({
+    full_name: settings.student_name || '',
+    preferred_name: '',
+    roll_number: settings.student_id || '',
+    register_number: '',
+    email: '',
+    institution: '',
+    degree: settings.major || '',
+    department: '',
+    admission_year: '',
+    academic_year: '',
+    semester: '',
+    university: '',
+    attendance_target: parseFloat(settings.attendance_threshold) || 75.0,
+    onboarding_completed: false,
   });
+
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [showSeedModal, setShowSeedModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+
+  // Fetch full student profile from backend
+  useEffect(() => {
+    api.profile
+      .get()
+      .then((p) => {
+        if (p) {
+          setProfile({
+            ...p,
+            full_name: p.full_name || settings.student_name || '',
+            roll_number: p.roll_number || settings.student_id || '',
+            degree: p.degree || settings.major || '',
+            attendance_target: p.attendance_target || parseFloat(settings.attendance_threshold) || 75.0,
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load detailed profile:', err);
+      });
+  }, [settings]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await onUpdateSettings(formData);
-      success('Settings updated', 'Preferences saved to persistent database');
+      if (!profile.full_name.trim()) {
+        throw new Error('Full name cannot be empty');
+      }
+      await api.profile.update(profile);
+      await onUpdateSettings({
+        student_name: profile.preferred_name?.trim() || profile.full_name.trim(),
+        student_id: profile.roll_number || profile.register_number || '',
+        major: profile.department || profile.degree || '',
+        attendance_threshold: String(profile.attendance_target),
+      });
+      success('Profile updated', 'Your student credentials and academic profile have been saved.');
     } catch (err: any) {
-      error('Failed to update settings', err.message);
+      error('Failed to update profile', err.message);
     } finally {
       setSaving(false);
     }
@@ -65,7 +117,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      success('Backup exported', 'Full campus database saved to JSON file');
+      success('Backup exported', 'Full campus database safely saved to local JSON archive.');
     } catch (err: any) {
       error('Export failed', err.message);
     }
@@ -79,25 +131,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
+      if (!parsed.subjects && !parsed.settings) {
+        throw new Error('Invalid backup file. Missing required CampusOS data structure.');
+      }
       const res = await api.backup.import(parsed);
       success('Data restored', `${res.message}`);
       window.location.reload();
     } catch (err: any) {
-      error('Import rejected', err.message || 'Invalid JSON format');
+      error('Import rejected', err.message || 'Invalid JSON format or corrupted archive');
     } finally {
       setImporting(false);
       e.target.value = '';
     }
   };
 
-  const handleSeed = async () => {
-    if (!confirm('This will load fresh demo subjects, timetable sessions, and coursework. Continue?')) {
-      return;
-    }
+  const handleConfirmResetDemo = async () => {
+    setShowSeedModal(false);
     setSeeding(true);
     try {
       await onResetDemoData();
-      success('Demo data restored', 'Academic dataset loaded successfully');
+      success('Demo data restored', 'Realistic coursework and demo dataset loaded.');
     } catch (err: any) {
       error('Seeding failed', err.message);
     } finally {
@@ -105,98 +158,328 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  const handleConfirmResetAllData = async () => {
+    setShowResetModal(false);
+    setResetting(true);
+    try {
+      await api.profile.resetData(true);
+      success('All Data Reset', 'Local database has been wiped clean.');
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    } catch (err: any) {
+      error('Reset failed', err.message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-          System & Profile Settings
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Configure personal credentials, compliance thresholds, calendar layouts, and backup archives.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-txt-primary tracking-tight">
+            Settings & Preferences
+          </h2>
+          <p className="text-xs sm:text-sm text-txt-secondary mt-1">
+            Manage your personal credentials, degree details, local privacy, and database persistence.
+          </p>
+        </div>
+
+        {onLaunchOnboarding && (
+          <button
+            type="button"
+            onClick={onLaunchOnboarding}
+            className="px-3.5 py-2 rounded-xl border border-accent/40 bg-accent-subtle hover:bg-accent/20 text-accent text-xs font-semibold flex items-center gap-1.5 transition-colors self-start sm:self-auto shadow-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Revisit Setup Wizard
+          </button>
+        )}
       </div>
 
-      {/* Student Profile Card */}
-      <div className="glass-panel rounded-2xl p-6 space-y-5">
-        <div className="flex items-center space-x-3 pb-3 border-b border-campus-700/60">
-          <div className="p-2 rounded-xl bg-brand-indigo/15 text-brand-indigo">
-            <User className="w-5 h-5" />
+      {/* Local-First Privacy Notice */}
+      <div className="app-panel rounded-xl p-5 border-l-4 border-emerald-500 bg-emerald-500/5">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-txt-primary">
+              Offline-First & Local Data Privacy
+            </h3>
+            <p className="text-xs text-txt-secondary leading-relaxed">
+              CampusOS runs entirely on your computer. All personal profile information, enrolled subjects, timetable slots, assignments, attendance logs, and notes are saved directly inside your operating system’s per-user data directory in an offline SQLite database.
+            </p>
+            <p className="text-[11px] text-txt-muted">
+              Database location: <span className="font-mono text-txt-secondary">%APPDATA%\CampusOS\campusos.db</span> (Zero cloud telemetry, zero external servers).
+            </p>
           </div>
+        </div>
+      </div>
+
+      {/* Appearance / Theme Selector */}
+      <div className="app-panel rounded-xl p-5 space-y-4">
+        <div className="pb-3 border-b border-border-subtle">
+          <h3 className="text-sm font-semibold text-txt-primary">Appearance</h3>
+          <p className="text-xs text-txt-secondary mt-0.5">
+            Select interface theme. Changes persist across application restarts.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+          <button
+            type="button"
+            onClick={() => onToggleTheme('dark')}
+            className={`p-3.5 rounded-xl text-left border flex items-center justify-between transition-all ${
+              currentTheme === 'dark'
+                ? 'border-accent bg-accent-subtle shadow-sm'
+                : 'border-border-subtle bg-surface hover:bg-surface-elevated'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-200">
+                <Moon className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-txt-primary">Dark</p>
+                <p className="text-xs text-txt-muted">Charcoal surface (Default)</p>
+              </div>
+            </div>
+            {currentTheme === 'dark' && <span className="w-2 h-2 rounded-full bg-accent"></span>}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggleTheme('light')}
+            className={`p-3.5 rounded-xl text-left border flex items-center justify-between transition-all ${
+              currentTheme === 'light'
+                ? 'border-accent bg-accent-subtle shadow-sm'
+                : 'border-border-subtle bg-surface hover:bg-surface-elevated'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-800">
+                <Sun className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-txt-primary">Light</p>
+                <p className="text-xs text-txt-muted">Clean high-contrast surface</p>
+              </div>
+            </div>
+            {currentTheme === 'light' && <span className="w-2 h-2 rounded-full bg-accent"></span>}
+          </button>
+        </div>
+      </div>
+
+      {/* Student Profile & Academic Settings */}
+      <div className="app-panel rounded-xl p-5 space-y-4">
+        <div className="flex items-center space-x-2.5 pb-3 border-b border-border-subtle">
+          <GraduationCap className="w-4 h-4 text-accent" />
           <div>
-            <h3 className="text-base font-bold text-white">Student Profile</h3>
-            <p className="text-xs text-slate-400">Personal academic identity displayed across CampusOS</p>
+            <h3 className="text-sm font-semibold text-txt-primary">Student Profile</h3>
+            <p className="text-xs text-txt-secondary">
+              Personal identity and institutional details shown on your dashboard and reports
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleSaveProfile} className="space-y-4">
+          {/* Personal Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Full Student Name
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Full Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                value={formData.student_name}
-                onChange={(e) => setFormData({ ...formData, student_name: e.target.value })}
-                className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                value={profile.full_name}
+                onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Student ID / Roll No.
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Preferred Name (Used in Greetings)
               </label>
               <input
                 type="text"
-                value={formData.student_id}
-                onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white font-mono focus:outline-none focus:border-brand-indigo"
+                value={profile.preferred_name || ''}
+                onChange={(e) => setProfile({ ...profile, preferred_name: e.target.value })}
+                placeholder="Nickname or preferred name"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Student Email
+              </label>
+              <input
+                type="email"
+                value={profile.email || ''}
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                placeholder="student@institution.edu"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Roll Number
+              </label>
+              <input
+                type="text"
+                value={profile.roll_number || ''}
+                onChange={(e) => setProfile({ ...profile, roll_number: e.target.value })}
+                placeholder="e.g. 21CS042"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Register Number
+              </label>
+              <input
+                type="text"
+                value={profile.register_number || ''}
+                onChange={(e) => setProfile({ ...profile, register_number: e.target.value })}
+                placeholder="e.g. 910021104042"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                College / Institution Name
+              </label>
+              <input
+                type="text"
+                value={profile.institution || ''}
+                onChange={(e) => setProfile({ ...profile, institution: e.target.value })}
+                placeholder="e.g. College of Engineering"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Major / Degree Program
-            </label>
-            <input
-              type="text"
-              value={formData.major}
-              onChange={(e) => setFormData({ ...formData, major: e.target.value })}
-              className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
-            />
+          {/* Academic Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border-subtle">
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Degree / Programme
+              </label>
+              <input
+                type="text"
+                value={profile.degree || ''}
+                onChange={(e) => setProfile({ ...profile, degree: e.target.value })}
+                placeholder="e.g. B.Tech / B.E."
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Department / Branch
+              </label>
+              <input
+                type="text"
+                value={profile.department || ''}
+                onChange={(e) => setProfile({ ...profile, department: e.target.value })}
+                placeholder="e.g. Computer Science"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Current Semester
+              </label>
+              <input
+                type="text"
+                value={profile.semester || ''}
+                onChange={(e) => setProfile({ ...profile, semester: e.target.value })}
+                placeholder="e.g. Semester 5"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Admission Year
+              </label>
+              <input
+                type="text"
+                value={profile.admission_year || ''}
+                onChange={(e) => setProfile({ ...profile, admission_year: e.target.value })}
+                placeholder="e.g. 2022"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                Academic Year
+              </label>
+              <input
+                type="text"
+                value={profile.academic_year || ''}
+                onChange={(e) => setProfile({ ...profile, academic_year: e.target.value })}
+                placeholder="e.g. 2024–2025"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
+                University / Affiliation
+              </label>
+              <input
+                type="text"
+                value={profile.university || ''}
+                onChange={(e) => setProfile({ ...profile, university: e.target.value })}
+                placeholder="e.g. State Technical University"
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
+              />
+            </div>
           </div>
 
           {/* Academic Preferences */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Attendance Warning Threshold (%)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-txt-secondary">
+                  Attendance Warning Threshold (%)
+                </label>
+                <span className="text-xs font-bold text-accent">
+                  {profile.attendance_target}%
+                </span>
+              </div>
               <input
-                type="number"
-                min="1"
-                max="100"
+                type="range"
+                min="50"
+                max="95"
                 step="1"
-                value={formData.attendance_threshold}
-                onChange={(e) => setFormData({ ...formData, attendance_threshold: e.target.value })}
-                className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo font-mono"
+                value={profile.attendance_target}
+                onChange={(e) =>
+                  setProfile({ ...profile, attendance_target: parseFloat(e.target.value) })
+                }
+                className="w-full accent-accent"
               />
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Triggers visual warning badges when subject attendance drops below this value. Default: 75%
+              <span className="text-[11px] text-txt-muted mt-1 block">
+                Subjects with attendance below this percentage display warning badges.
               </span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-txt-secondary mb-1">
                 Week Starts On
               </label>
               <select
-                value={formData.week_start}
-                onChange={(e) => setFormData({ ...formData, week_start: e.target.value })}
-                className="w-full px-3 py-2 text-sm bg-campus-850 border border-campus-700 rounded-xl text-white focus:outline-none focus:border-brand-indigo"
+                value={settings.week_start || 'monday'}
+                onChange={(e) => onUpdateSettings({ week_start: e.target.value })}
+                className="w-full px-3 py-2 text-sm app-input rounded-lg"
               >
                 <option value="monday">Monday (ISO Standard)</option>
                 <option value="sunday">Sunday</option>
@@ -204,11 +487,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end pt-3">
+          <div className="flex justify-end pt-2">
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 text-sm font-semibold text-white bg-brand-indigo hover:bg-indigo-500 rounded-xl shadow-glow-indigo transition-all disabled:opacity-50"
+              className="px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-accent hover:bg-accent-hover rounded-lg transition-colors disabled:opacity-50 shadow-sm"
             >
               {saving ? 'Saving...' : 'Save Profile Changes'}
             </button>
@@ -217,52 +500,51 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       </div>
 
       {/* Data Management & Backup Archive */}
-      <div className="glass-panel rounded-2xl p-6 space-y-5">
-        <div className="flex items-center space-x-3 pb-3 border-b border-campus-700/60">
-          <div className="p-2 rounded-xl bg-brand-cyan/15 text-brand-cyan">
-            <Database className="w-5 h-5" />
-          </div>
+      <div className="app-panel rounded-xl p-5 space-y-4">
+        <div className="flex items-center space-x-2.5 pb-3 border-b border-border-subtle">
+          <Database className="w-4 h-4 text-txt-muted" />
           <div>
-            <h3 className="text-base font-bold text-white">Data Management & Local Persistence</h3>
-            <p className="text-xs text-slate-400">
-              CampusOS stores all records locally in SQLite (`campusos.db`). Export or restore anytime.
+            <h3 className="text-sm font-semibold text-txt-primary">Data Management & Persistence</h3>
+            <p className="text-xs text-txt-secondary">
+              Export and restore portable JSON snapshots, or reset your local database
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           {/* Export */}
-          <div className="p-4 rounded-xl bg-campus-850 border border-campus-700 flex flex-col justify-between space-y-3">
+          <div className="p-3.5 rounded-lg border border-border-subtle bg-surface flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center space-x-2 text-brand-cyan font-bold text-xs uppercase tracking-wider">
-                <Download className="w-4 h-4" />
-                <span>Export JSON</span>
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-txt-primary">
+                <Download className="w-4 h-4 text-txt-muted" />
+                <span>Export Backup</span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Download a complete portable JSON archive containing all subjects, timetable, notes, and attendance.
+              <p className="text-xs text-txt-muted mt-1 leading-relaxed">
+                Download a JSON archive of all profile records, subjects, timetable, and notes.
               </p>
             </div>
             <button
+              type="button"
               onClick={handleExportData}
-              className="w-full py-2 text-xs font-semibold text-white bg-campus-800 hover:bg-campus-750 border border-campus-700 rounded-xl transition-all"
+              className="w-full py-1.5 text-xs font-medium text-txt-primary bg-surface-elevated hover:bg-surface-hover border border-border-subtle rounded-lg transition-colors shadow-sm"
             >
-              Download Backup
+              Export JSON
             </button>
           </div>
 
           {/* Import */}
-          <div className="p-4 rounded-xl bg-campus-850 border border-campus-700 flex flex-col justify-between space-y-3">
+          <div className="p-3.5 rounded-lg border border-border-subtle bg-surface flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center space-x-2 text-brand-indigo font-bold text-xs uppercase tracking-wider">
-                <Upload className="w-4 h-4" />
-                <span>Import JSON</span>
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-txt-primary">
+                <Upload className="w-4 h-4 text-txt-muted" />
+                <span>Restore Backup</span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Upload a verified CampusOS JSON backup file to restore records transactionally.
+              <p className="text-xs text-txt-muted mt-1 leading-relaxed">
+                Upload a verified CampusOS backup JSON file to restore your coursework.
               </p>
             </div>
-            <label className="w-full py-2 text-xs font-semibold text-center text-white bg-campus-800 hover:bg-campus-750 border border-campus-700 rounded-xl transition-all cursor-pointer">
-              <span>{importing ? 'Restoring...' : 'Upload & Restore'}</span>
+            <label className="w-full py-1.5 text-xs font-medium text-center text-txt-primary bg-surface-elevated hover:bg-surface-hover border border-border-subtle rounded-lg transition-colors cursor-pointer shadow-sm">
+              <span>{importing ? 'Restoring...' : 'Upload File'}</span>
               <input
                 type="file"
                 accept=".json,application/json"
@@ -273,27 +555,71 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </label>
           </div>
 
-          {/* Demo Data Reset */}
-          <div className="p-4 rounded-xl bg-campus-850 border border-campus-700 flex flex-col justify-between space-y-3">
+          {/* Demo Dataset */}
+          <div className="p-3.5 rounded-lg border border-border-subtle bg-surface flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center space-x-2 text-brand-amber font-bold text-xs uppercase tracking-wider">
-                <Sparkles className="w-4 h-4" />
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-txt-primary">
+                <RotateCcw className="w-4 h-4 text-txt-muted" />
                 <span>Demo Dataset</span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Populate complete realistic courses, timetable, overdue tasks, exams, and attendance histories.
+              <p className="text-xs text-txt-muted mt-1 leading-relaxed">
+                Populate realistic university courses, timetable slots, assignments, and exams for testing.
               </p>
             </div>
             <button
-              onClick={handleSeed}
+              type="button"
+              onClick={() => setShowSeedModal(true)}
               disabled={seeding}
-              className="w-full py-2 text-xs font-semibold text-white bg-brand-indigo/30 hover:bg-brand-indigo/50 border border-brand-indigo/50 rounded-xl transition-all disabled:opacity-50"
+              className="w-full py-1.5 text-xs font-medium text-txt-secondary hover:text-txt-primary bg-surface-elevated hover:bg-surface-hover border border-border-subtle rounded-lg transition-colors"
             >
               {seeding ? 'Seeding...' : 'Load Demo Data'}
             </button>
           </div>
+
+          {/* Reset All Local Data */}
+          <div className="p-3.5 rounded-lg border border-red-500/20 bg-red-500/5 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-red-600 dark:text-red-400">
+                <Trash2 className="w-4 h-4" />
+                <span>Reset All Data</span>
+              </div>
+              <p className="text-xs text-txt-muted mt-1 leading-relaxed">
+                Permanently wipes all local academic records and resets onboarding.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowResetModal(true)}
+              disabled={resetting}
+              className="w-full py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-colors"
+            >
+              {resetting ? 'Resetting...' : 'Reset Local Data'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Confirmation Modal for Reset Demo */}
+      <ConfirmModal
+        isOpen={showSeedModal}
+        title="Load Demo Dataset"
+        message="This will populate your local database with sample engineering courses, timetable, exams, and attendance logs. Existing data will be overwritten."
+        confirmText="Load Demo Data"
+        isDanger={false}
+        onConfirm={handleConfirmResetDemo}
+        onCancel={() => setShowSeedModal(false)}
+      />
+
+      {/* Confirmation Modal for Reset All Data */}
+      <ConfirmModal
+        isOpen={showResetModal}
+        title="Reset All Local Data"
+        message="Are you sure you want to permanently erase all local subjects, timetable schedules, assignments, exams, attendance logs, and student profiles? This action cannot be undone."
+        confirmText="Yes, Wipe All Data"
+        isDanger={true}
+        onConfirm={handleConfirmResetAllData}
+        onCancel={() => setShowResetModal(false)}
+      />
     </div>
   );
 };

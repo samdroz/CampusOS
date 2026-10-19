@@ -6,6 +6,7 @@ from backend.app.models.models import (
     AttendanceRecord,
     Note,
     Setting,
+    StudentProfile,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "AttendanceRecord",
     "Note",
     "Setting",
+    "StudentProfile",
 ]

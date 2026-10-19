@@ -32,7 +32,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts((prev) => [...prev, { id, type, title, message }]);
     setTimeout(() => {
       removeToast(id);
-    }, 4500);
+    }, 4000);
   }, [removeToast]);
 
   const success = useCallback((title: string, message?: string) => showToast('success', title, message), [showToast]);
@@ -43,39 +43,38 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col space-y-2.5 max-w-sm w-full pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 max-w-sm w-full pointer-events-none">
         {toasts.map((toast) => {
-          let icon = <Info className="w-5 h-5 text-blue-400 shrink-0" />;
-          let border = 'border-blue-500/30';
-          let bg = 'bg-campus-850/95';
+          let icon = <Info className="w-4 h-4 text-accent shrink-0" />;
+          let borderClass = 'border-l-accent';
 
           if (toast.type === 'success') {
-            icon = <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />;
-            border = 'border-emerald-500/30';
+            icon = <CheckCircle2 className="w-4 h-4 text-semantic-success shrink-0" />;
+            borderClass = 'border-l-semantic-success';
           } else if (toast.type === 'error') {
-            icon = <XCircle className="w-5 h-5 text-rose-400 shrink-0" />;
-            border = 'border-rose-500/30';
+            icon = <XCircle className="w-4 h-4 text-semantic-danger shrink-0" />;
+            borderClass = 'border-l-semantic-danger';
           } else if (toast.type === 'warning') {
-            icon = <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />;
-            border = 'border-amber-500/30';
+            icon = <AlertTriangle className="w-4 h-4 text-semantic-warning shrink-0" />;
+            borderClass = 'border-l-semantic-warning';
           }
 
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto flex items-start p-3.5 rounded-xl border ${border} ${bg} backdrop-blur-xl shadow-2xl animate-scaleIn transition-all`}
+              className={`pointer-events-auto flex items-start p-3 rounded-lg border border-border-default border-l-4 ${borderClass} bg-surface shadow-xl animate-scaleIn transition-all`}
             >
-              <div className="mr-3 mt-0.5">{icon}</div>
+              <div className="mr-2.5 mt-0.5">{icon}</div>
               <div className="flex-1 mr-2 min-w-0">
-                <p className="text-sm font-semibold text-slate-100 leading-snug">{toast.title}</p>
-                {toast.message && <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{toast.message}</p>}
+                <p className="text-xs font-semibold text-txt-primary leading-snug">{toast.title}</p>
+                {toast.message && <p className="text-[11px] text-txt-secondary mt-0.5 leading-relaxed">{toast.message}</p>}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-slate-200 transition-colors p-1"
+                className="text-txt-muted hover:text-txt-primary transition-colors p-0.5"
                 aria-label="Close notification"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           );

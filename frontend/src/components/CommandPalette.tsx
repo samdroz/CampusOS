@@ -8,9 +8,9 @@ import {
   Calendar,
   Settings,
   ArrowRight,
-  Command,
   X,
   Clock,
+  UserCheck,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { SearchItem } from '../types';
@@ -28,27 +28,24 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Quick navigation items
   const staticNavigation = [
-    { title: 'Dashboard', page: 'dashboard', icon: GraduationCap, badge: 'Page' },
-    { title: 'Subjects & Courses', page: 'subjects', icon: BookOpen, badge: 'Page' },
-    { title: 'Weekly Timetable', page: 'timetable', icon: Calendar, badge: 'Page' },
-    { title: 'Assignments & Tasks', page: 'assignments', icon: CheckSquare, badge: 'Page' },
-    { title: 'Examinations Schedule', page: 'exams', icon: Clock, badge: 'Page' },
-    { title: 'Attendance Tracker', page: 'attendance', icon: CheckSquare, badge: 'Page' },
-    { title: 'Lecture Notes', page: 'notes', icon: FileText, badge: 'Page' },
-    { title: 'Settings & Profile', page: 'settings', icon: Settings, badge: 'Page' },
+    { title: 'Dashboard', page: 'dashboard', icon: GraduationCap },
+    { title: 'Subjects & Courses', page: 'subjects', icon: BookOpen },
+    { title: 'Weekly Timetable', page: 'timetable', icon: Calendar },
+    { title: 'Assignments & Deliverables', page: 'assignments', icon: CheckSquare },
+    { title: 'Examinations Schedule', page: 'exams', icon: Clock },
+    { title: 'Attendance Tracker', page: 'attendance', icon: UserCheck },
+    { title: 'Lecture Notes', page: 'notes', icon: FileText },
+    { title: 'Settings & Appearance', page: 'settings', icon: Settings },
   ];
 
-  // Global keyboard shortcut
+  // Global shortcut Ctrl+K / Cmd+K
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         if (isOpen) {
           onClose();
-        } else {
-          // Open handled by parent or state
         }
       } else if (e.key === 'Escape' && isOpen) {
         onClose();
@@ -64,7 +61,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       setQuery('');
       setResults([]);
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 40);
     }
   }, [isOpen]);
 
@@ -87,12 +84,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       } finally {
         setLoading(false);
       }
-    }, 200);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Key navigation in palette
+  // Keyboard navigation
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     const totalItems = query.trim() ? results.length : staticNavigation.length;
     if (totalItems === 0) return;
@@ -107,8 +104,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       e.preventDefault();
       if (query.trim() && results[selectedIndex]) {
         const item = results[selectedIndex];
-        const page = item.url.replace('/', '');
-        onNavigate(page);
+        onNavigate(item.url.replace('/', ''));
         onClose();
       } else if (!query.trim() && staticNavigation[selectedIndex]) {
         onNavigate(staticNavigation[selectedIndex].page);
@@ -120,51 +116,51 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-      <div className="bg-campus-900 border border-campus-700/80 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden animate-scaleIn">
-        {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-campus-700/60 bg-campus-850/60">
-          <Search className="w-5 h-5 text-slate-400 mr-3 shrink-0" />
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-surface border border-border-default rounded-xl max-w-xl w-full shadow-2xl overflow-hidden animate-scaleIn">
+        {/* Search Bar */}
+        <div className="flex items-center px-4 py-3 border-b border-border-subtle bg-surface">
+          <Search className="w-4 h-4 text-txt-muted mr-3 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder="Type a command or search subjects, assignments, exams, notes..."
-            className="w-full bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
+            placeholder="Search subjects, assignments, exams, notes..."
+            className="w-full bg-transparent text-sm text-txt-primary placeholder-txt-muted focus:outline-none"
           />
           {query ? (
             <button
               onClick={() => setQuery('')}
-              className="text-slate-400 hover:text-white p-1 rounded-lg"
+              className="text-txt-muted hover:text-txt-primary p-1 rounded"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-mono text-slate-400 bg-campus-800 border border-campus-700 rounded">
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.2 text-[10px] font-mono text-txt-muted bg-surface-elevated border border-border-subtle rounded">
               ESC
             </kbd>
           )}
         </div>
 
         {/* Results Container */}
-        <div className="max-h-96 overflow-y-auto p-2">
+        <div className="max-h-80 overflow-y-auto p-1.5">
           {loading && (
-            <div className="py-8 text-center text-xs text-slate-400 animate-pulse">
-              Searching CampusOS records...
+            <div className="py-6 text-center text-xs text-txt-muted">
+              Searching records...
             </div>
           )}
 
           {!loading && query.trim() && results.length === 0 && (
-            <div className="py-8 text-center text-sm text-slate-400">
-              No matching records found for "{query}"
+            <div className="py-6 text-center text-xs text-txt-muted">
+              No results found for "{query}"
             </div>
           )}
 
           {!loading && query.trim() && results.length > 0 && (
-            <div className="space-y-1">
-              <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <div className="space-y-0.5">
+              <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-txt-muted">
                 Search Results ({results.length})
               </div>
               {results.map((item, idx) => {
@@ -183,25 +179,20 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                       onClose();
                     }}
                     onMouseEnter={() => setSelectedIndex(idx)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all ${
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors ${
                       isSelected
-                        ? 'bg-brand-indigo/20 text-white border border-brand-indigo/30'
-                        : 'text-slate-200 hover:bg-campus-800/60'
+                        ? 'bg-accent-subtle text-accent'
+                        : 'text-txt-primary hover:bg-surface-elevated'
                     }`}
                   >
-                    <div className="flex items-center space-x-3 min-w-0">
-                      <div
-                        className="p-1.5 rounded-lg shrink-0"
-                        style={{ backgroundColor: `${item.color || '#6366F1'}20`, color: item.color || '#6366F1' }}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </div>
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <Icon className="w-4 h-4 text-txt-muted shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        {item.subtitle && <p className="text-xs text-slate-400 truncate">{item.subtitle}</p>}
+                        <p className="text-xs font-medium text-txt-primary truncate">{item.title}</p>
+                        {item.subtitle && <p className="text-[11px] text-txt-muted truncate">{item.subtitle}</p>}
                       </div>
                     </div>
-                    <span className="ml-2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-campus-800 text-slate-300 border border-campus-700 uppercase tracking-wider shrink-0">
+                    <span className="ml-2 text-[10px] font-mono uppercase text-txt-muted px-1.5 py-0.2 rounded bg-surface-elevated border border-border-subtle shrink-0">
                       {item.badge}
                     </span>
                   </button>
@@ -211,9 +202,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
           )}
 
           {!query.trim() && (
-            <div className="space-y-1">
-              <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Quick Navigation
+            <div className="space-y-0.5">
+              <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-txt-muted">
+                Navigation
               </div>
               {staticNavigation.map((item, idx) => {
                 const Icon = item.icon;
@@ -227,19 +218,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                       onClose();
                     }}
                     onMouseEnter={() => setSelectedIndex(idx)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all ${
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors ${
                       isSelected
-                        ? 'bg-brand-indigo/20 text-white border border-brand-indigo/30'
-                        : 'text-slate-200 hover:bg-campus-800/60'
+                        ? 'bg-accent-subtle text-accent'
+                        : 'text-txt-secondary hover:text-txt-primary hover:bg-surface-elevated'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="p-1.5 rounded-lg bg-campus-800 text-brand-indigo">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="text-sm font-medium">{item.title}</span>
+                    <div className="flex items-center space-x-2.5">
+                      <Icon className="w-4 h-4 text-txt-muted" />
+                      <span className="text-xs font-medium">{item.title}</span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-400" />
+                    <ArrowRight className="w-3.5 h-3.5 text-txt-muted" />
                   </button>
                 );
               })}
@@ -247,20 +236,20 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
           )}
         </div>
 
-        {/* Footer shortcuts */}
-        <div className="px-4 py-2.5 bg-campus-950 border-t border-campus-700/60 flex items-center justify-between text-[11px] text-slate-400">
-          <div className="flex items-center space-x-3">
+        {/* Footer */}
+        <div className="px-3 py-2 bg-surface-elevated border-t border-border-subtle flex items-center justify-between text-[11px] text-txt-muted">
+          <div className="flex items-center space-x-2">
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-campus-800 border border-campus-700 text-slate-300 font-mono">↑</kbd>{' '}
-              <kbd className="px-1.5 py-0.5 rounded bg-campus-800 border border-campus-700 text-slate-300 font-mono">↓</kbd>{' '}
+              <kbd className="px-1 py-0.2 rounded bg-surface border border-border-subtle font-mono text-[10px]">↑</kbd>{' '}
+              <kbd className="px-1 py-0.2 rounded bg-surface border border-border-subtle font-mono text-[10px]">↓</kbd>{' '}
               Navigate
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-campus-800 border border-campus-700 text-slate-300 font-mono">↵</kbd>{' '}
+              <kbd className="px-1 py-0.2 rounded bg-surface border border-border-subtle font-mono text-[10px]">↵</kbd>{' '}
               Select
             </span>
           </div>
-          <span>Search CampusOS</span>
+          <span>CampusOS Search</span>
         </div>
       </div>
     </div>

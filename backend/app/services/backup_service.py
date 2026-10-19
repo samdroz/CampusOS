@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from backend.app.models.models import (
-    Subject, ClassSession, Assignment, Exam, AttendanceRecord, Note, Setting
+    Subject, ClassSession, Assignment, Exam, AttendanceRecord, Note, Setting, StudentProfile
 )
 
 def export_all_data(db: Session) -> Dict[str, Any]:
@@ -13,6 +13,8 @@ def export_all_data(db: Session) -> Dict[str, Any]:
     attendance = db.query(AttendanceRecord).all()
     notes = db.query(Note).all()
     settings = db.query(Setting).all()
+    profile = db.query(StudentProfile).first()
+
 
     return {
         "version": "1.0",
@@ -86,6 +88,22 @@ def export_all_data(db: Session) -> Dict[str, Any]:
             for n in notes
         ],
         "settings": {s.key: s.value for s in settings},
+        "profile": {
+            "full_name": profile.full_name,
+            "preferred_name": profile.preferred_name,
+            "roll_number": profile.roll_number,
+            "register_number": profile.register_number,
+            "email": profile.email,
+            "institution": profile.institution,
+            "degree": profile.degree,
+            "department": profile.department,
+            "admission_year": profile.admission_year,
+            "academic_year": profile.academic_year,
+            "semester": profile.semester,
+            "university": profile.university,
+            "attendance_target": profile.attendance_target,
+            "onboarding_completed": profile.onboarding_completed,
+        } if profile else None,
     }
 
 def import_all_data(db: Session, data: Dict[str, Any], wipe_existing: bool = True) -> Dict[str, int]:
@@ -217,8 +235,20 @@ def import_all_data(db: Session, data: Dict[str, Any], wipe_existing: bool = Tru
             else:
                 db.add(Setting(key=k, value=str(v)))
 
+        # 8. Profile
+        prof_data = data.get("profile")
+        if prof_data and isinstance(prof_data, dict):
+            profile = db.query(StudentProfile).first()
+            if not profile:
+                profile = StudentProfile(full_name=prof_data.get("full_name") or "Student")
+                db.add(profile)
+            for k, val in prof_data.items():
+                if hasattr(profile, k) and k != "id":
+                    setattr(profile, k, val)
+
         db.commit()
         return counts
+
     except Exception as e:
         db.rollback()
         raise e

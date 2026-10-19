@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import React from 'react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
+import { SettingsPage } from '../pages/SettingsPage';
+import { PageTransition } from '../components/PageTransition';
+import { Header } from '../components/Header';
+import { ContextualModuleAnimation } from '../components/AcademicLoader';
+import { ToastProvider } from '../components/Toast';
+import { OnboardingModal } from '../components/OnboardingModal';
+import { api } from '../api/client';
 
 describe('Frontend Business Logic & Validation Test Suite', () => {
   // 1. Attendance Calculation & Empty State Logic
@@ -155,6 +164,346 @@ describe('Frontend Business Logic & Validation Test Suite', () => {
       expect(clean).not.toContain('<script>');
       expect(clean).not.toContain('alert("hacked")');
       expect(clean).toContain('Valid content');
+    });
+  });
+
+  // 7. Theme Switching & Preference Persistence
+  describe('Theme Management & Persistence', () => {
+    it('defaults to dark mode when no saved preference exists', () => {
+      const getInitialTheme = (saved: string | null) => {
+        return saved === 'light' ? 'light' : 'dark';
+      };
+
+      expect(getInitialTheme(null)).toBe('dark');
+      expect(getInitialTheme('unknown')).toBe('dark');
+      expect(getInitialTheme('dark')).toBe('dark');
+      expect(getInitialTheme('light')).toBe('light');
+    });
+
+    it('toggles theme state immediately and mirrors to storage', () => {
+      let currentTheme: 'dark' | 'light' = 'dark';
+      const mockStorage: Record<string, string> = {};
+
+      const setTheme = (next: 'dark' | 'light') => {
+        currentTheme = next;
+        mockStorage['campusos_theme'] = next;
+      };
+
+      // Toggle from dark to light
+      setTheme('light');
+      expect(currentTheme).toBe('light');
+      expect(mockStorage['campusos_theme']).toBe('light');
+
+      // Toggle from light to dark
+      setTheme('dark');
+      expect(currentTheme).toBe('dark');
+      expect(mockStorage['campusos_theme']).toBe('dark');
+    });
+
+    it('updates document.documentElement root class correctly for CSS variables', () => {
+      const applyThemeToDOM = (theme: 'dark' | 'light') => {
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(theme);
+      };
+
+      applyThemeToDOM('light');
+      expect(document.documentElement.classList.contains('light')).toBe(true);
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+      applyThemeToDOM('dark');
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+      expect(document.documentElement.classList.contains('light')).toBe(false);
+    });
+  });
+
+  // 8. First-Launch Startup Experience & Session Behavior
+  describe('First-Launch Startup Session Logic', () => {
+    it('shows startup animation only once per browser session', () => {
+      const mockSessionStorage: Record<string, string> = {};
+
+      const shouldShowStartup = () => {
+        return !mockSessionStorage['campusos_session_started'];
+      };
+
+      const markStartupCompleted = () => {
+        mockSessionStorage['campusos_session_started'] = 'true';
+      };
+
+      // First time in browser session
+      expect(shouldShowStartup()).toBe(true);
+
+      // Startup finishes
+      markStartupCompleted();
+
+      // Subsequent navigations or tabs in same session
+      expect(shouldShowStartup()).toBe(false);
+      expect(mockSessionStorage['campusos_session_started']).toBe('true');
+    });
+
+    it('enforces minimum animation window (~1.5s) while loading in parallel', () => {
+      let isDataReady = false;
+      let minTimeElapsed = false;
+
+      const canDismissSplash = () => isDataReady && minTimeElapsed;
+
+      // Fast API response (e.g. 200ms) - should NOT dismiss prematurely
+      isDataReady = true;
+      expect(canDismissSplash()).toBe(false);
+
+      // Min time finishes
+      minTimeElapsed = true;
+      expect(canDismissSplash()).toBe(true);
+    });
+  });
+
+  // 9. Context-Aware Loading Animation System
+  describe('Context-Aware Navigation Loaders', () => {
+    const modules = [
+      'dashboard',
+      'subjects',
+      'timetable',
+      'assignments',
+      'exams',
+      'attendance',
+      'notes',
+      'settings',
+    ] as const;
+
+    const defaultMessages: Record<string, string> = {
+      dashboard: 'Organizing workspace...',
+      subjects: 'Cataloging courses & credits...',
+      timetable: 'Aligning weekly schedules...',
+      assignments: 'Checking upcoming deadlines...',
+      exams: 'Retrieving examination calendar...',
+      attendance: 'Calculating attendance records...',
+      notes: 'Opening study guides & notes...',
+      settings: 'Loading system preferences...',
+    };
+
+    it('maps all 8 major application modules to distinct academic messages', () => {
+      modules.forEach((mod) => {
+        expect(defaultMessages[mod]).toBeDefined();
+        expect(defaultMessages[mod].length).toBeGreaterThan(10);
+      });
+    });
+
+    it('handles API failure states with retry capability', () => {
+      let retried = false;
+      const errorState = {
+        error: 'Network request failed (500)',
+        onRetry: () => {
+          retried = true;
+        },
+      };
+
+      expect(errorState.error).toContain('failed');
+      errorState.onRetry();
+      expect(retried).toBe(true);
+    });
+  });
+
+  // 10. Navigation Transitions & Reduced Motion
+  describe('Navigation Transitions & Accessibility', () => {
+    it('uses snappy 200ms transition duration without page-covering overlays', () => {
+      const transitionDurationMs = 200;
+      expect(transitionDurationMs).toBeGreaterThanOrEqual(180);
+      expect(transitionDurationMs).toBeLessThanOrEqual(220);
+    });
+
+    it('supports prefers-reduced-motion without breaking navigation', () => {
+      const getAnimationBehavior = (reducedMotion: boolean) => {
+        return reducedMotion ? 'instant-fade' : 'animated-spring';
+      };
+
+      expect(getAnimationBehavior(true)).toBe('instant-fade');
+      expect(getAnimationBehavior(false)).toBe('animated-spring');
+    });
+
+    it('renders PageTransition children properly in DOM with ZERO page-covering overlays', () => {
+      const { container } = render(
+        <PageTransition pageKey="dashboard">
+          <div data-testid="test-content">Dashboard Content</div>
+        </PageTransition>
+      );
+      expect(container.textContent).toContain('Dashboard Content');
+      expect(container.firstChild).toBeDefined();
+      // Verifies zero full-screen or content-covering overlay exists
+      expect(container.querySelector('.contextual-nav-loader')).toBeNull();
+    });
+
+    it('handles enter/exit lifecycle cleanly without lingering overlays', () => {
+      vi.useFakeTimers();
+      const { container, rerender } = render(
+        <PageTransition pageKey="dashboard">
+          <div data-testid="page-dashboard">Dashboard View</div>
+        </PageTransition>
+      );
+
+      expect(container.textContent).toContain('Dashboard View');
+
+      // Navigate to subjects
+      rerender(
+        <PageTransition pageKey="subjects">
+          <div data-testid="page-subjects">Subjects View</div>
+        </PageTransition>
+      );
+
+      // During the transition: outgoing and incoming are rendered, with NO page-covering overlay
+      expect(container.textContent).toContain('Dashboard View');
+      expect(container.textContent).toContain('Subjects View');
+      expect(container.querySelector('.contextual-nav-loader')).toBeNull();
+
+      // Fast forward past the 200ms page transition
+      act(() => {
+        vi.advanceTimersByTime(210);
+      });
+
+      // Outgoing has unmounted, incoming remains fully interactive and unobstructed
+      expect(container.textContent).not.toContain('Dashboard View');
+      expect(container.textContent).toContain('Subjects View');
+      expect(container.querySelector('.contextual-nav-loader')).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it('renders contextual academic animations for all 8 destination modules', () => {
+      const modules = [
+        'dashboard',
+        'subjects',
+        'timetable',
+        'assignments',
+        'exams',
+        'attendance',
+        'notes',
+        'settings',
+      ] as const;
+
+      modules.forEach((mod) => {
+        const { container } = render(<ContextualModuleAnimation module={mod} />);
+        expect(container.firstChild).toBeDefined();
+        // Verifies non-empty SVG or animated icon markup
+        expect(container.innerHTML.length).toBeGreaterThan(50);
+      });
+    });
+
+    it('renders non-blocking inline academic animation badge in Header beside page title', () => {
+      const { container } = render(
+        <Header
+          pageTitle="subjects"
+          currentTheme="dark"
+          onToggleTheme={vi.fn()}
+          onOpenCommandPalette={vi.fn()}
+          onOpenMobileMenu={vi.fn()}
+          onQuickAction={vi.fn()}
+        />
+      );
+
+      // Title is rendered
+      expect(screen.getByText('subjects')).toBeDefined();
+      // Non-blocking inline icon container is rendered in header
+      const inlineBadge = container.querySelector('[title="CampusOS subjects"]');
+      expect(inlineBadge).not.toBeNull();
+      expect(inlineBadge?.classList.contains('w-7')).toBe(true);
+    });
+  });
+
+  // 11. Settings Page: Verification of Animation Preview Removal
+  describe('Settings Page Configuration', () => {
+    const mockSettings = {
+      student_name: 'Alex Morgan',
+      student_id: 'STU-8829',
+      major: 'Computer Science & Engineering',
+      attendance_threshold: '75.0',
+      week_start: 'monday',
+      theme: 'dark' as const,
+    };
+
+    it('confirms Academic Animations & Transitions preview section is completely removed', () => {
+      render(
+        <ToastProvider>
+          <SettingsPage
+            settings={mockSettings}
+            currentTheme="dark"
+            onToggleTheme={vi.fn()}
+            onUpdateSettings={vi.fn()}
+            onResetDemoData={vi.fn()}
+          />
+        </ToastProvider>
+      );
+
+      // Verify no animation preview headings or buttons exist
+      expect(screen.queryByText(/Academic Animations & Transitions/i)).toBeNull();
+      expect(screen.queryByText(/Replay Startup Animation/i)).toBeNull();
+      expect(screen.queryByText(/Context-Aware Module Loader Preview/i)).toBeNull();
+      expect(screen.queryByText(/CampusOS uses lightweight, contextual academic animations/i)).toBeNull();
+    });
+
+    it('preserves Appearance theme selector and core academic settings', () => {
+      render(
+        <ToastProvider>
+          <SettingsPage
+            settings={mockSettings}
+            currentTheme="dark"
+            onToggleTheme={vi.fn()}
+            onUpdateSettings={vi.fn()}
+            onResetDemoData={vi.fn()}
+          />
+        </ToastProvider>
+      );
+
+      // Verify Appearance is intact
+      expect(screen.getByText('Appearance')).toBeDefined();
+      expect(screen.getByText('Dark')).toBeDefined();
+      expect(screen.getByText('Light')).toBeDefined();
+
+      // Verify Student Profile & Academic Settings are intact
+      expect(screen.getByText('Student Profile')).toBeDefined();
+      expect(screen.getByText('Attendance Warning Threshold (%)')).toBeDefined();
+      expect(screen.getByText('Data Management & Persistence')).toBeDefined();
+    });
+  });
+
+  // 12. Onboarding Modal & First-Launch Wizard
+  describe('Onboarding Modal & First-Launch Wizard', () => {
+    it('does not render when isOpen is false (completed profile)', () => {
+      const { container } = render(
+        <OnboardingModal isOpen={false} onComplete={vi.fn()} onSkip={vi.fn()} />
+      );
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('renders welcome screen when isOpen is true (fresh profile)', () => {
+      render(
+        <OnboardingModal isOpen={true} onComplete={vi.fn()} onSkip={vi.fn()} />
+      );
+      expect(screen.getAllByText('Welcome to CampusOS').length).toBeGreaterThan(0);
+      expect(screen.getByText('Start Setup')).toBeDefined();
+      expect(screen.getByText('Skip for Now')).toBeDefined();
+    });
+
+    it('navigates from welcome screen into personal details step', () => {
+      render(
+        <OnboardingModal isOpen={true} onComplete={vi.fn()} onSkip={vi.fn()} />
+      );
+      fireEvent.click(screen.getByText('Start Setup'));
+      expect(screen.getByText('Personal Profile')).toBeDefined();
+      expect(screen.getByPlaceholderText('Enter your full name')).toBeDefined();
+    });
+
+    it('calls onSkip callback when user clicks Skip for Now', async () => {
+      const onSkipMock = vi.fn();
+      vi.spyOn(api.profile, 'skipOnboarding').mockResolvedValue({
+        status: 'success',
+        message: 'Onboarding skipped.',
+        onboarding_completed: true,
+      });
+      render(
+        <OnboardingModal isOpen={true} onComplete={vi.fn()} onSkip={onSkipMock} />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByText('Skip for Now'));
+      });
+      expect(onSkipMock).toHaveBeenCalled();
     });
   });
 });

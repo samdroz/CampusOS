@@ -2,7 +2,7 @@ from datetime import datetime, date
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from backend.app.models.models import (
-    Subject, ClassSession, Assignment, Exam, AttendanceRecord, Note, Setting
+    Subject, ClassSession, Assignment, Exam, AttendanceRecord, Note, Setting, StudentProfile
 )
 from backend.app.schemas.schemas import (
     DashboardOverview, AssignmentOut, ExamOut, NoteOut, ClassSessionOut,
@@ -12,8 +12,15 @@ from backend.app.services.attendance_service import get_overall_attendance_summa
 from backend.app.services.timetable_service import get_next_upcoming_class
 
 def get_student_name(db: Session) -> str:
+    profile = db.query(StudentProfile).first()
+    if profile:
+        if profile.preferred_name and profile.preferred_name.strip():
+            return profile.preferred_name.strip()
+        if profile.full_name and profile.full_name.strip():
+            return profile.full_name.strip()
     setting = db.query(Setting).filter(Setting.key == "student_name").first()
-    return setting.value if setting and setting.value else "Alex Morgan"
+    return setting.value.strip() if setting and setting.value and setting.value.strip() else ""
+
 
 def get_dashboard_data(db: Session) -> DashboardOverview:
     now = datetime.now()

@@ -9,9 +9,28 @@ import {
   SettingsMap,
   DashboardOverview,
   SearchResult,
+  StudentProfile,
+  OnboardingPayload,
 } from '../types';
 
-const BASE_URL = '/api';
+let currentBaseUrl = typeof window !== 'undefined' && window.location?.origin && !window.location.origin.startsWith('file:') && window.location.origin !== 'null'
+  ? `${window.location.origin.replace(/\/$/, '')}/api`
+  : '/api';
+
+export function setApiBaseUrl(url: string) {
+  currentBaseUrl = url.replace(/\/$/, '') + '/api';
+  if (typeof window !== 'undefined') {
+    (window as any).__CAMPUSOS_BACKEND_URL__ = url;
+  }
+}
+
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined' && (window as any).__CAMPUSOS_BACKEND_URL__) {
+    const raw = (window as any).__CAMPUSOS_BACKEND_URL__;
+    return raw.endsWith('/api') ? raw : `${raw.replace(/\/$/, '')}/api`;
+  }
+  return currentBaseUrl;
+}
 
 class ApiError extends Error {
   status: number;
@@ -26,7 +45,9 @@ class ApiError extends Error {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${BASE_URL}${endpoint}`;
+  const base = getApiBaseUrl();
+  const url = `${base}${endpoint}`;
+
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
@@ -247,6 +268,30 @@ export const api = {
       }),
   },
 
+  // Student Profile & Onboarding
+  profile: {
+    get: () => request<StudentProfile>('/profile'),
+    update: (data: Partial<StudentProfile>) =>
+      request<StudentProfile>('/profile', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    completeOnboarding: (payload: OnboardingPayload) =>
+      request<{ status: string; message: string; profile: any }>('/profile/onboarding', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    skipOnboarding: () =>
+      request<{ status: string; message: string; onboarding_completed: boolean }>('/profile/skip-onboarding', {
+        method: 'POST',
+      }),
+    resetData: (confirm: boolean) =>
+      request<{ status: string; message: string }>('/profile/reset', {
+        method: 'POST',
+        body: JSON.stringify({ confirm }),
+      }),
+  },
+
   // Search
   search: (q: string) => request<SearchResult>(`/search?q=${encodeURIComponent(q)}`),
 
@@ -262,6 +307,21 @@ export const api = {
       request<{ status: string; message: string; counts: any }>('/seed', {
         method: 'POST',
       }),
+  },
+
+  // Diagnostic Onboarding Logging
+  debug: {
+    log: (stage: string, message: string = '', details: any = null) => {
+      try {
+        console.log(`[CampusOS-Debug] [${stage}] ${message}`, details || '');
+      } catch {}
+      return request<{ status: string }>('/debug/log', {
+        method: 'POST',
+        body: JSON.stringify({ stage, message, details }),
+      }).catch((e) => {
+        console.warn('[CampusOS-Debug] Failed to report debug log:', e);
+      });
+    },
   },
 };
 

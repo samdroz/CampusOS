@@ -8,29 +8,55 @@ export default {
   theme: {
     extend: {
       colors: {
+        app: 'var(--bg-app)',
+        surface: {
+          DEFAULT: 'var(--bg-surface)',
+          elevated: 'var(--bg-surface-elevated)',
+          hover: 'var(--bg-surface-hover)',
+        },
+        input: 'var(--bg-input)',
+        border: {
+          subtle: 'var(--border-subtle)',
+          DEFAULT: 'var(--border-default)',
+          focus: 'var(--border-focus)',
+        },
+        txt: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent-primary)',
+          hover: 'var(--accent-hover)',
+          subtle: 'var(--accent-subtle)',
+          text: 'var(--accent-text)',
+        },
+        semantic: {
+          success: 'var(--success)',
+          'success-subtle': 'var(--success-subtle)',
+          warning: 'var(--warning)',
+          'warning-subtle': 'var(--warning-subtle)',
+          danger: 'var(--danger)',
+          'danger-subtle': 'var(--danger-subtle)',
+        },
+        // Keep campus legacy palette mapped smoothly to prevent broken styles
         campus: {
-          950: '#06090F', // deep void background
-          900: '#0B0F17', // main dark background
-          850: '#101623', // card background
-          800: '#161F30', // elevated card / panel
-          750: '#1D283E', // hover state
-          700: '#25334E', // subtle border
-          600: '#384A6E',
-          500: '#4F6594',
-          400: '#7E92BA',
-          300: '#A4B6D8',
-          200: '#CBD6EB',
-          100: '#E4ECF8',
-          50: '#F4F7FC',
+          950: 'var(--bg-app)',
+          900: 'var(--bg-app)',
+          850: 'var(--bg-surface)',
+          800: 'var(--bg-surface-elevated)',
+          750: 'var(--bg-surface-hover)',
+          700: 'var(--border-subtle)',
+          600: 'var(--border-default)',
         },
         brand: {
-          indigo: '#6366F1',
+          indigo: 'var(--accent-primary)',
           violet: '#8B5CF6',
           blue: '#3B82F6',
           cyan: '#06B6D4',
-          emerald: '#10B981',
-          amber: '#F59E0B',
-          rose: '#F43F5E',
+          emerald: 'var(--success)',
+          amber: 'var(--warning)',
+          rose: 'var(--danger)',
         }
       },
       fontFamily: {
@@ -50,24 +76,19 @@ export default {
           'monospace',
         ],
       },
-      boxShadow: {
-        'glow-indigo': '0 0 20px -3px rgba(99, 102, 241, 0.25)',
-        'glow-cyan': '0 0 20px -3px rgba(6, 182, 212, 0.25)',
-        'glow-rose': '0 0 20px -3px rgba(244, 63, 94, 0.25)',
-      },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '0%': { opacity: '0', transform: 'translateY(2px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '0%': { opacity: '0', transform: 'scale(0.98)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
       },
       animation: {
-        fadeIn: 'fadeIn 0.2s ease-out',
-        scaleIn: 'scaleIn 0.15s ease-out',
+        fadeIn: 'fadeIn 0.15s ease-out',
+        scaleIn: 'scaleIn 0.12s ease-out',
       },
     },
   },

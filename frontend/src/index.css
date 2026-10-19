@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,18 +6,70 @@
 
 @layer base {
   :root {
+    color-scheme: light;
+    --bg-app: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-surface-elevated: #F1F5F9;
+    --bg-surface-hover: #E2E8F0;
+    --bg-input: #FFFFFF;
+    --border-subtle: #E2E8F0;
+    --border-default: #CBD5E1;
+    --border-focus: #4F46E5;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent-primary: #4F46E5;
+    --accent-hover: #4338CA;
+    --accent-subtle: #EEF2FF;
+    --accent-text: #4338CA;
+    --success: #059669;
+    --success-subtle: #ECFDF5;
+    --warning: #D97706;
+    --warning-subtle: #FFFBEB;
+    --danger: #DC2626;
+    --danger-subtle: #FEF2F2;
+  }
+
+  .dark {
     color-scheme: dark;
+    --bg-app: #0B0F17;
+    --bg-surface: #111726;
+    --bg-surface-elevated: #161F33;
+    --bg-surface-hover: #1D2840;
+    --bg-input: #0E1422;
+    --border-subtle: #1E293B;
+    --border-default: #2A384F;
+    --border-focus: #6366F1;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --accent-primary: #6366F1;
+    --accent-hover: #4F46E5;
+    --accent-subtle: rgba(99, 102, 241, 0.12);
+    --accent-text: #A5B4FC;
+    --success: #10B981;
+    --success-subtle: rgba(16, 185, 129, 0.12);
+    --warning: #F59E0B;
+    --warning-subtle: rgba(245, 158, 11, 0.12);
+    --danger: #EF4444;
+    --danger-subtle: rgba(239, 68, 68, 0.12);
   }
 
   body {
-    @apply bg-campus-950 text-slate-100 font-sans antialiased selection:bg-brand-indigo/30 selection:text-white min-h-screen overflow-x-hidden;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
 }
 
-/* Custom scrollbars */
+/* Minimal Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -25,44 +77,282 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #25334E;
+  background: var(--border-subtle);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #384A6E;
+  background: var(--border-default);
 }
 
-/* Glass and Surface utility classes */
+/* Clean UI Component Utilities */
+.app-panel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.app-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-card:hover {
+  border-color: var(--border-default);
+}
+
+.app-input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: all 0.15s ease-in-out;
+}
+
+.app-input:focus {
+  border-color: var(--border-focus);
+  outline: none;
+}
+
+/* Backward-compatible wrappers mapped cleanly */
 .glass-panel {
-  background: rgba(16, 22, 35, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(37, 51, 78, 0.6);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
 }
 
 .glass-card {
-  background: rgba(22, 31, 48, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(37, 51, 78, 0.6);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s ease-in-out;
 }
 
 .glass-card:hover {
-  background: rgba(29, 40, 62, 0.7);
-  border-color: rgba(99, 102, 241, 0.35);
-  transform: translateY(-1px);
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--border-default);
 }
 
 .glass-input {
-  background: rgba(11, 15, 23, 0.85);
-  border: 1px solid #25334E;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
   transition: all 0.15s ease-in-out;
 }
 
 .glass-input:focus {
-  border-color: #6366F1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  border-color: var(--border-focus);
   outline: none;
+}
+
+/* -------------------------------------------------------------
+ * Academic Animations & Transition Utilities
+ * ------------------------------------------------------------- */
+
+/* 1. First-Launch Notebook Shuffle */
+@keyframes notebook-shuffle {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-8px) translateX(14px) rotate(3deg);
+  }
+  60% {
+    transform: translateY(4px) translateX(-4px) rotate(-1deg);
+  }
+  100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+}
+
+.animate-notebook-shuffle {
+  animation: notebook-shuffle 1.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+@keyframes page-flutter {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(0.7) translate(-1px, 1px);
+    opacity: 0.6;
+  }
+}
+
+.animate-page-flutter {
+  animation: page-flutter 1.2s ease-in-out infinite;
+}
+
+/* 2. Dashboard Notebook Shuffle */
+@keyframes academic-shuffle {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(-3px) translateX(2px);
+  }
+}
+
+.animate-academic-shuffle {
+  animation: academic-shuffle 1.4s ease-in-out infinite;
+}
+
+/* 3. Subjects Books Slide */
+@keyframes academic-slide-1 {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-3px); }
+}
+@keyframes academic-slide-2 {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+@keyframes academic-slide-3 {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-1px); }
+}
+
+.animate-academic-slide-1 { animation: academic-slide-1 1.6s ease-in-out infinite; }
+.animate-academic-slide-2 { animation: academic-slide-2 1.6s ease-in-out infinite 0.15s; }
+.animate-academic-slide-3 { animation: academic-slide-3 1.6s ease-in-out infinite 0.3s; }
+
+/* 4. Timetable Grid Snap */
+@keyframes academic-snap {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.4; }
+}
+
+.animate-academic-snap-1 { animation: academic-snap 1.2s ease-in-out infinite 0.0s; }
+.animate-academic-snap-2 { animation: academic-snap 1.2s ease-in-out infinite 0.2s; }
+.animate-academic-snap-3 { animation: academic-snap 1.2s ease-in-out infinite 0.4s; }
+.animate-academic-snap-4 { animation: academic-snap 1.2s ease-in-out infinite 0.6s; }
+
+/* 5. Assignments Checkmark Drawing */
+@keyframes academic-check {
+  0% {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+  50%, 100% {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.animate-academic-check {
+  animation: academic-check 1.4s ease-in-out infinite;
+}
+
+/* 6. Exams Paper Slide */
+@keyframes academic-paper {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg);
+  }
+}
+
+.animate-academic-paper {
+  animation: academic-paper 1.8s ease-in-out infinite;
+}
+
+/* 7. Settings Slider Calibration */
+@keyframes academic-slider-1 {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(14px); }
+}
+@keyframes academic-slider-2 {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-14px); }
+}
+
+.animate-academic-slider-1 { animation: academic-slider-1 1.5s ease-in-out infinite; }
+.animate-academic-slider-2 { animation: academic-slider-2 1.5s ease-in-out infinite 0.2s; }
+
+/* 8. Settings Gear Smooth Rotation */
+@keyframes academic-gear {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-academic-gear {
+  animation: academic-gear 2.4s linear infinite;
+}
+
+/* 9. Page Navigation Transitions (200ms smooth fade-and-slide)
+ * Outgoing page fades out with subtle -6px lift over 200ms
+ * Incoming page fades in with subtle +8px vertical translation over 200ms
+ */
+@keyframes nav-page-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes nav-page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-nav-exit {
+  animation: nav-page-exit 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.animate-nav-enter {
+  animation: nav-page-enter 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* 10. Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-notebook-shuffle,
+  .animate-page-flutter,
+  .animate-academic-shuffle,
+  .animate-academic-slide-1,
+  .animate-academic-slide-2,
+  .animate-academic-slide-3,
+  .animate-academic-snap-1,
+  .animate-academic-snap-2,
+  .animate-academic-snap-3,
+  .animate-academic-snap-4,
+  .animate-academic-check,
+  .animate-academic-paper,
+  .animate-academic-slider-1,
+  .animate-academic-slider-2,
+  .animate-academic-gear {
+    animation: none !important;
+    transition: opacity 0.05s ease !important;
+    transform: none !important;
+  }
+
+  @keyframes nav-fade-out-reduced {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes nav-fade-in-reduced {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  .animate-nav-exit {
+    animation: nav-fade-out-reduced 150ms ease-out forwards !important;
+    transform: none !important;
+  }
+  .animate-nav-enter {
+    animation: nav-fade-in-reduced 150ms ease-out forwards !important;
+    transform: none !important;
+  }
 }

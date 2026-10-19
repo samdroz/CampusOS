@@ -113,3 +113,31 @@ class Setting(Base):
 
     key = Column(String(50), primary_key=True)
     value = Column(Text, nullable=False)
+
+
+class StudentProfile(Base):
+    __tablename__ = "student_profile"
+
+    id = Column(Integer, primary_key=True, default=1)
+    # Personal profile
+    full_name = Column(String(120), nullable=False)
+    preferred_name = Column(String(120), nullable=True)
+    roll_number = Column(String(50), nullable=True)
+    register_number = Column(String(50), nullable=True)
+    email = Column(String(120), nullable=True)
+
+    # Academic profile
+    institution = Column(String(200), nullable=True)
+    degree = Column(String(100), nullable=True)
+    department = Column(String(150), nullable=True)
+    admission_year = Column(String(20), nullable=True)
+    academic_year = Column(String(20), nullable=True)
+    semester = Column(String(20), nullable=True)
+    university = Column(String(200), nullable=True)
+
+    # Academic Setup / Preferences
+    attendance_target = Column(Float, default=75.0, nullable=False)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

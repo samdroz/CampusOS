@@ -367,13 +367,124 @@ class NoteOut(NoteBase):
 
 # ===================== SETTINGS SCHEMAS =====================
 class SettingsMap(BaseModel):
-    student_name: str = "Alex Morgan"
-    student_id: Optional[str] = "STU-8829"
-    major: Optional[str] = "Computer Science"
+    student_name: str = ""
+    student_id: Optional[str] = ""
+    major: Optional[str] = ""
     attendance_threshold: float = 75.0
     week_start: str = "monday"  # monday | sunday
     theme: str = "dark"
     enable_notifications: bool = True
+
+
+# ===================== STUDENT PROFILE SCHEMAS =====================
+class StudentProfileBase(BaseModel):
+    full_name: str = Field(default="", max_length=120)
+    preferred_name: Optional[str] = Field(None, max_length=120)
+    roll_number: Optional[str] = Field(None, max_length=50)
+    register_number: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=120)
+
+    institution: Optional[str] = Field(None, max_length=200)
+    degree: Optional[str] = Field(None, max_length=100)
+    department: Optional[str] = Field(None, max_length=150)
+    admission_year: Optional[str] = Field(None, max_length=20)
+    academic_year: Optional[str] = Field(None, max_length=20)
+    semester: Optional[str] = Field(None, max_length=20)
+    university: Optional[str] = Field(None, max_length=200)
+
+    attendance_target: float = Field(default=75.0, ge=1.0, le=100.0)
+    onboarding_completed: bool = False
+
+
+class StudentProfileCreate(StudentProfileBase):
+    full_name: str = Field(..., min_length=1, max_length=120)
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("Full name cannot be blank")
+        return clean
+
+
+class StudentProfileUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, min_length=1, max_length=120)
+    preferred_name: Optional[str] = Field(None, max_length=120)
+    roll_number: Optional[str] = Field(None, max_length=50)
+    register_number: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=120)
+
+    institution: Optional[str] = Field(None, max_length=200)
+    degree: Optional[str] = Field(None, max_length=100)
+    department: Optional[str] = Field(None, max_length=150)
+    admission_year: Optional[str] = Field(None, max_length=20)
+    academic_year: Optional[str] = Field(None, max_length=20)
+    semester: Optional[str] = Field(None, max_length=20)
+    university: Optional[str] = Field(None, max_length=200)
+
+    attendance_target: Optional[float] = Field(None, ge=1.0, le=100.0)
+    onboarding_completed: Optional[bool] = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            clean = v.strip()
+            if not clean:
+                raise ValueError("Full name cannot be blank")
+            return clean
+        return v
+
+
+class StudentProfileOut(StudentProfileBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OnboardingSetupItem(BaseModel):
+    name: str
+    code: str
+    credits: int = 3
+    instructor: Optional[str] = None
+    color: str = "#6366F1"
+
+
+class OnboardingExamItem(BaseModel):
+    subject_code: str
+    title: str
+    exam_date: str
+    start_time: str
+    end_time: Optional[str] = None
+    location: Optional[str] = None
+
+
+class OnboardingAssignmentItem(BaseModel):
+    subject_code: str
+    title: str
+    due_date: str
+    priority: str = "medium"
+
+
+class OnboardingScheduleItem(BaseModel):
+    subject_code: str
+    day_of_week: int
+    start_time: str
+    end_time: str
+    room: Optional[str] = None
+    session_type: str = "Lecture"
+
+
+class OnboardingPayload(BaseModel):
+    profile: StudentProfileCreate
+    subjects: List[OnboardingSetupItem] = []
+    exams: List[OnboardingExamItem] = []
+    assignments: List[OnboardingAssignmentItem] = []
+    sessions: List[OnboardingScheduleItem] = []
+
 
 
 # ===================== DASHBOARD & SEARCH SCHEMAS =====================

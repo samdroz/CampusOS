@@ -34,40 +34,40 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-campus-850 border border-campus-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scaleIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-surface border border-border-default rounded-xl max-w-md w-full p-5 shadow-2xl animate-scaleIn">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2.5 rounded-xl ${isDanger ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-brand-indigo/10 text-brand-indigo border border-brand-indigo/20'}`}>
-              <AlertTriangle className="w-5 h-5" />
+          <div className="flex items-center space-x-2.5">
+            <div className={`p-2 rounded-lg ${isDanger ? 'bg-semantic-danger-subtle text-semantic-danger' : 'bg-accent-subtle text-accent'}`}>
+              <AlertTriangle className="w-4 h-4" />
             </div>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
+            <h3 className="text-sm font-semibold text-txt-primary">{title}</h3>
           </div>
           <button
             onClick={onCancel}
-            className="text-slate-400 hover:text-slate-200 transition-colors p-1 rounded-lg hover:bg-campus-800"
+            className="text-txt-muted hover:text-txt-primary transition-colors p-1 rounded-md hover:bg-surface-elevated"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="mt-3 text-sm text-slate-300 leading-relaxed">{message}</p>
+        <p className="mt-2.5 text-xs text-txt-secondary leading-relaxed">{message}</p>
 
-        <div className="mt-6 flex items-center justify-end space-x-3">
+        <div className="mt-5 flex items-center justify-end space-x-2">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-campus-800 hover:bg-campus-750 border border-campus-700 rounded-xl transition-all"
+            className="px-3.5 py-1.5 text-xs font-medium text-txt-primary bg-surface-elevated hover:bg-surface-hover border border-border-subtle rounded-lg transition-colors"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-xl shadow-lg transition-all ${
+            className={`px-3.5 py-1.5 text-xs font-semibold text-white rounded-lg transition-colors ${
               isDanger
-                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/20'
-                : 'bg-brand-indigo hover:bg-indigo-500 shadow-indigo-900/20'
+                ? 'bg-semantic-danger hover:opacity-90'
+                : 'bg-accent hover:bg-accent-hover'
             }`}
           >
             {confirmText}

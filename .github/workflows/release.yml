@@ -1,0 +1,120 @@
+name: Build and Release CampusOS Desktop Application
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Desktop Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Frontend Tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build Frontend Production Assets
+        working-directory: frontend
+        run: npm run build
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies & PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Backend Automated Tests
+        run: |
+          $env:PYTHONPATH="."
+          pytest backend/tests/ -v
+
+      - name: Package Backend Standalone Executable (PyInstaller)
+        run: |
+          New-Item -ItemType Directory -Force -Path "frontend\src-tauri\binaries"
+          pyinstaller --name campusos-backend --onefile --clean `
+            --collect-all uvicorn `
+            --collect-all fastapi `
+            --collect-all pydantic `
+            --collect-all sqlalchemy `
+            --add-data "frontend/dist;frontend_dist" `
+            backend/desktop_entry.py
+          Copy-Item "dist\campusos-backend.exe" -Destination "frontend\src-tauri\binaries\campusos-backend-x86_64-pc-windows-msvc.exe" -Force
+
+      - name: Build Native Windows Launcher & Standalone Installer
+        run: |
+          & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /win32icon:"frontend\src-tauri\icons\icon.ico" /out:"dist\CampusOS.exe" "launcher\Program.cs"
+          makensis "installer\CampusOS.nsi"
+
+      - name: Set up Rust Stable Toolchain (MSVC)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build Tauri Desktop Package & Installer
+        working-directory: frontend
+        run: npx tauri build
+
+      - name: Collect Release Artifacts
+        id: collect
+        run: |
+          New-Item -ItemType Directory -Force -Path "release_assets"
+          if (Test-Path "dist\CampusOS_1.0.0_Setup.exe") {
+            Copy-Item "dist\CampusOS_1.0.0_Setup.exe" -Destination "release_assets\" -Force
+          }
+          if (Test-Path "frontend\src-tauri\target\release\bundle\nsis\*.exe") {
+            Get-ChildItem -Path "frontend\src-tauri\target\release\bundle\nsis\*.exe" | Copy-Item -Destination "release_assets\" -Force
+          }
+          if (Test-Path "frontend\src-tauri\target\release\bundle\msi\*.msi") {
+            Get-ChildItem -Path "frontend\src-tauri\target\release\bundle\msi\*.msi" | Copy-Item -Destination "release_assets\" -Force
+          }
+          Get-ChildItem release_assets\
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release_assets/*
+          name: CampusOS Desktop ${{ github.ref_name }}
+          body: |
+            ## CampusOS Desktop Application (${{ github.ref_name }})
+
+            Welcome to the local-first desktop release of CampusOS!
+
+            ### Highlights
+            - **Local-First & Offline Privacy:** All subjects, timetable schedules, assignments, attendance logs, and notes are saved directly on your computer in an offline SQLite database (`%APPDATA%\CampusOS\campusos.db`).
+            - **Zero Dependencies Required:** You do NOT need to install Python, Node.js, or Rust to run the application. Everything is self-contained.
+            - **First-Launch Onboarding:** Set up your student credentials, subjects, and attendance targets with an interactive onboarding wizard.
+            - **Complete Academic Suite:** Integrated student dashboard, course catalog, weekly schedules, deadline tracking, exam countdowns, attendance warning calculators, and local JSON backup/restore.
+
+            ### Installation Instructions (Windows)
+            1. Download `CampusOS_1.0.0_Setup.exe` below.
+            2. Run the installer and launch CampusOS from your Start Menu or Desktop shortcut.
+            3. Complete the welcome setup wizard on your first run.
+          draft: false
+          prerelease: false
