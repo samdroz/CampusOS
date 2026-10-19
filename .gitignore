@@ -28,9 +28,23 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Build & Packaging
+build/
+dist/
+release_assets/
+*.spec
+frontend/src-tauri/target/
+frontend/src-tauri/binaries/*.exe
+*.backup.json
+backend_endpoint.txt
+backend_port.txt
+webview_cache/
+
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
+
