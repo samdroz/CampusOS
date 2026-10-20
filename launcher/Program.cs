@@ -120,6 +120,7 @@ namespace CampusOS
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string webCache = Path.Combine(appData, "CampusOS", "webview_cache");
 
+            bool windowOpened = false;
             try
             {
                 if (File.Exists(edgePath))
@@ -133,28 +134,56 @@ namespace CampusOS
                     Process edgeProc = Process.Start(edgePsi);
                     if (edgeProc != null)
                     {
+                        windowOpened = true;
                         edgeProc.WaitForExit();
                     }
                 }
-                else
+            }
+            catch
+            {
+                // Edge launch failed, proceed to browser fallback
+                windowOpened = false;
+            }
+
+            if (!windowOpened)
+            {
+                try
                 {
-                    // Fallback to default browser
-                    Process.Start(backendUrl + "/");
+                    ProcessStartInfo browserPsi = new ProcessStartInfo
+                    {
+                        FileName = backendUrl + "/",
+                        UseShellExecute = true
+                    };
+                    Process.Start(browserPsi);
+
+                    // Keep the launcher process alive so the local backend remains active
+                    MessageBox.Show(
+                        "CampusOS is running in your default web browser:\n" + backendUrl + "/\n\n" +
+                        "Click OK when you are finished using CampusOS to shut down the backend services.",
+                        "CampusOS - Running in Browser",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                catch (Exception browserEx)
+                {
+                    // Backend is active; keep launcher alive so user can browse manually and shut down cleanly on dismissal
+                    MessageBox.Show(
+                        "CampusOS local backend is active at:\n" + backendUrl + "/\n\n" +
+                        "The system could not launch your default web browser automatically:\n" +
+                        browserEx.Message + "\n\n" +
+                        "Please open your web browser manually and navigate to:\n" +
+                        backendUrl + "/\n\n" +
+                        "Keep this dialog open while using CampusOS.\n" +
+                        "Click OK when you are finished to shut down the backend services.",
+                        "CampusOS - Running in Browser (Manual)",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    "Error launching desktop interface:\n" + ex.Message,
-                    "CampusOS Window Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-            }
-            finally
-            {
-                CleanShutdown();
-            }
+
+            CleanShutdown();
         }
 
         private static int FindAvailablePort(int start, int end)

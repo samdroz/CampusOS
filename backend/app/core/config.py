@@ -49,8 +49,43 @@ def get_default_database_url() -> str:
 
     return "sqlite:///./campusos.db"
 
+def get_app_version() -> str:
+    """
+    Resolves application version reliably in packaged and dev environments:
+    1. Environment override (CAMPUSOS_VERSION / GITHUB_REF_NAME)
+    2. Embedded package version (backend.app.version)
+    3. Tauri configuration file (if present in local dev)
+    4. Fallback '1.0.0'
+    """
+    raw = os.environ.get("CAMPUSOS_VERSION") or os.environ.get("GITHUB_REF_NAME")
+    if raw:
+        import re
+        m = re.match(r"^v?(\d+\.\d+\.\d+.*)$", raw)
+        if m:
+            return m.group(1)
+
+    try:
+        from backend.app.version import __version__
+        if __version__:
+            return str(__version__)
+    except Exception:
+        pass
+
+    try:
+        tauri_conf = Path(__file__).resolve().parent.parent.parent.parent / "frontend" / "src-tauri" / "tauri.conf.json"
+        if tauri_conf.exists():
+            import json
+            data = json.loads(tauri_conf.read_text(encoding="utf-8"))
+            if "version" in data and data["version"]:
+                return str(data["version"])
+    except Exception:
+        pass
+
+    return "1.0.0"
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CampusOS"
+    APP_VERSION: str = get_app_version()
     API_V1_STR: str = "/api"
     DATABASE_URL: str = get_default_database_url()
     CORS_ORIGINS: List[str] = [

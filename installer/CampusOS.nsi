@@ -3,13 +3,15 @@
 
 # General Definitions
 !define PRODUCT_NAME "CampusOS"
-!define PRODUCT_VERSION "1.0.0"
+!ifndef PRODUCT_VERSION
+  !define PRODUCT_VERSION "1.0.0"
+!endif
 !define PRODUCT_PUBLISHER "CampusOS Team"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\CampusOS.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\dist\CampusOS_1.0.0_Setup.exe"
+OutFile "..\dist\CampusOS_${PRODUCT_VERSION}_Setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\CampusOS"
 InstallDirRegKey HKCU "${PRODUCT_DIR_REGKEY}" ""
 RequestExecutionLevel user

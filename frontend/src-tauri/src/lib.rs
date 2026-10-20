@@ -26,6 +26,70 @@ fn find_available_port(start: u16, end: u16) -> u16 {
     18000
 }
 
+fn check_backend_health(port: u16) -> bool {
+    use std::io::{Read, Write};
+    use std::net::{SocketAddr, TcpStream};
+    use std::time::Duration;
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let mut stream = match TcpStream::connect_timeout(&addr, Duration::from_millis(600)) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(600)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(600)));
+
+    let request = format!(
+        "GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nConnection: close\r\nAccept: application/json\r\n\r\n",
+        port
+    );
+
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+
+    let mut response_bytes = Vec::with_capacity(1024);
+    let mut chunk = [0u8; 512];
+    const MAX_RESPONSE_BYTES: usize = 4096;
+
+    // Read incrementally up to bounded maximum size to handle partial chunks and avoid EOF hanging
+    while response_bytes.len() < MAX_RESPONSE_BYTES {
+        match stream.read(&mut chunk) {
+            Ok(0) => break, // Server closed connection (EOF)
+            Ok(n) => {
+                response_bytes.extend_from_slice(&chunk[..n]);
+                let partial = String::from_utf8_lossy(&response_bytes);
+                // When header boundary is received, validate status line and body payload
+                if let Some(body_start) = partial.find("\r\n\r\n") {
+                    let headers = &partial[..body_start];
+                    let body = &partial[body_start + 4..];
+                    let is_status_200 = headers.starts_with("HTTP/1.1 200") || headers.starts_with("HTTP/1.0 200");
+                    let is_healthy_payload = body.contains("\"status\":\"healthy\"") || body.contains("\"status\": \"healthy\"");
+                    if is_status_200 && is_healthy_payload {
+                        return true;
+                    }
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut || e.kind() == std::io::ErrorKind::WouldBlock => {
+                // Read timeout hit; break and evaluate whatever has been buffered
+                break;
+            }
+            Err(_) => break,
+        }
+    }
+
+    let final_str = String::from_utf8_lossy(&response_bytes);
+    if let Some(body_start) = final_str.find("\r\n\r\n") {
+        let headers = &final_str[..body_start];
+        let body = &final_str[body_start + 4..];
+        let is_status_200 = headers.starts_with("HTTP/1.1 200") || headers.starts_with("HTTP/1.0 200");
+        let is_healthy_payload = body.contains("\"status\":\"healthy\"") || body.contains("\"status\": \"healthy\"");
+        return is_status_200 && is_healthy_payload;
+    }
+    false
+}
+
 #[tauri::command]
 fn get_backend_url(state: tauri::State<Arc<BackendState>>) -> String {
     state.url.clone()
@@ -105,13 +169,11 @@ pub fn run() {
                     println!("[CampusOS] Sidecar executable not found locally; connecting to dev backend if running.");
                 }
 
-                // Poll health check for up to 15 seconds
-                let health_url = format!("http://127.0.0.1:{}/api/health", port);
+                // Poll health check for up to 15 seconds using real /api/health HTTP requests
                 let mut is_healthy = false;
                 for _ in 0..30 {
                     thread::sleep(Duration::from_millis(500));
-                    // Check if port is open
-                    if TcpListener::bind(("127.0.0.1", port)).is_err() {
+                    if check_backend_health(port) {
                         is_healthy = true;
                         break;
                     }

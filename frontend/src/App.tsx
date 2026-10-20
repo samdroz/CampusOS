@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { ToastProvider, useToast } from './components/Toast';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -17,7 +18,7 @@ import { AttendancePage } from './pages/AttendancePage';
 import { NotesPage } from './pages/NotesPage';
 import { SettingsPage } from './pages/SettingsPage';
 
-import { api } from './api/client';
+import { api, setApiBaseUrl } from './api/client';
 import {
   DashboardOverview,
   Subject,
@@ -116,6 +117,75 @@ const MainApp: React.FC = () => {
     setShowFirstLaunchSplash(false);
   }, [showOnboarding]);
 
+  // In-flight readiness check reference to avoid duplicate concurrent polling loops
+  const readinessPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  const defaultTotalDeadlineMs = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test' ? 100 : 10000;
+  const defaultDelayMs = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test' ? 20 : 400;
+
+  // Poll backend readiness before attempting initial data fetch, strictly bounded by an overall deadline (~10 seconds in production)
+  const waitForBackendReadiness = useCallback(async (totalDeadlineMs = defaultTotalDeadlineMs, delayMs = defaultDelayMs): Promise<boolean> => {
+    if (readinessPromiseRef.current) {
+      return readinessPromiseRef.current;
+    }
+
+    const checkPromise = (async () => {
+      // If in Tauri desktop and backend URL not initialized yet, query it
+      if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ && !(window as any).__CAMPUSOS_BACKEND_URL__) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const url = await invoke<string>('get_backend_url');
+          if (url) {
+            api.debug.log('TAURI_BACKEND_DISCOVERED', 'Discovered backend URL via Tauri IPC', { url });
+            setApiBaseUrl(url);
+          }
+        } catch (err: any) {
+          api.debug.log('TAURI_BACKEND_DISCOVERY_ERR', err?.message || String(err));
+        }
+      }
+
+      const startTime = Date.now();
+      const deadline = startTime + totalDeadlineMs;
+
+      while (Date.now() < deadline) {
+        const remainingTime = deadline - Date.now();
+        if (remainingTime <= 0) break;
+
+        // Cap per-request timeout to min(1500ms, remainingTime) so requests never overrun deadline
+        const requestTimeout = Math.min(1500, remainingTime);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+
+        try {
+          const health = await api.health({ signal: controller.signal });
+          if (health && health.status === 'healthy') {
+            return true;
+          }
+        } catch {
+          // Handshake attempt failed or timed out, will retry if deadline has not elapsed
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
+        const timeAfterRequest = deadline - Date.now();
+        if (timeAfterRequest <= 0) break;
+
+        // Bounded delay between retries
+        const sleepTime = Math.min(delayMs, timeAfterRequest);
+        await new Promise((res) => setTimeout(res, sleepTime));
+      }
+
+      return false;
+    })();
+
+    readinessPromiseRef.current = checkPromise;
+    try {
+      return await checkPromise;
+    } finally {
+      readinessPromiseRef.current = null;
+    }
+  }, []);
+
   // Fetch all core data
   const refreshAllData = useCallback(async () => {
     setLoadError(null);
@@ -123,6 +193,17 @@ const MainApp: React.FC = () => {
       current_showOnboarding: showOnboarding,
       current_loading: loading,
     });
+
+    const isReady = await waitForBackendReadiness();
+    if (!isReady) {
+      api.debug.log('BACKEND_NOT_READY', 'Backend health check handshake failed after retries');
+      setLoadError('Failed to connect to CampusOS backend services. Please verify that the application backend is running.');
+      setShowOnboarding(false);
+      setLoading(false);
+      return;
+    }
+
+    let profileFetchFailed = false;
 
     try {
       api.debug.log('PROFILE_REQUEST_SENT', 'Dispatching GET /api/profile and parallel requests');
@@ -152,6 +233,7 @@ const MainApp: React.FC = () => {
         api.settings.get().catch(() => defaultSettings),
         api.profile.get().catch((e) => {
           api.debug.log('API_PROFILE_ERROR', e?.message || 'Profile fetch failed');
+          profileFetchFailed = true;
           return null;
         }),
       ]);
@@ -173,7 +255,7 @@ const MainApp: React.FC = () => {
         }
       }
 
-      if (prof) {
+      if (!profileFetchFailed && prof) {
         setProfile(prof);
         const needsOnboarding = !prof.onboarding_completed;
         api.debug.log('PROFILE_RESPONSE_PROCESSED', 'Profile payload received from backend', {
@@ -182,17 +264,16 @@ const MainApp: React.FC = () => {
           needsOnboarding,
           prev_showOnboarding: showOnboarding,
         });
-
-        if (needsOnboarding) {
-          api.debug.log('SHOW_ONBOARDING_SET_TRUE', 'Setting showOnboarding = true');
-          setShowOnboarding(true);
-        } else {
-          api.debug.log('SHOW_ONBOARDING_SET_FALSE', 'Setting showOnboarding = false because profile is completed');
-          setShowOnboarding(false);
-        }
+        setShowOnboarding(needsOnboarding);
       } else {
-        api.debug.log('SHOW_ONBOARDING_SET_TRUE_FALLBACK', 'Profile response was null; defaulting showOnboarding = true');
-        setShowOnboarding(true);
+        // Do not treat backend failure as first-launch onboarding
+        api.debug.log('PROFILE_UNAVAILABLE', 'Profile fetch failed or was null; withholding onboarding', {
+          profileFetchFailed,
+        });
+        setShowOnboarding(false);
+        if (profileFetchFailed) {
+          setLoadError('Could not load student profile from backend.');
+        }
       }
     } catch (err: any) {
       console.error('Data refresh error:', err);
@@ -203,7 +284,7 @@ const MainApp: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [handleToggleTheme]);
+  }, [handleToggleTheme, waitForBackendReadiness]);
 
 
   useEffect(() => {
@@ -400,6 +481,31 @@ const MainApp: React.FC = () => {
 
         {/* Scrollable Page Body */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-app">
+          {/* Visible Error Banner when splash is inactive */}
+          {loadError && !showFirstLaunchSplash && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mx-6 mt-4 p-4 rounded-xl bg-semantic-danger/10 border border-semantic-danger/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-semantic-danger animate-fadeIn"
+            >
+              <div className="flex items-center space-x-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold">Backend Connection Issue</p>
+                  <p className="text-xs text-txt-secondary">{loadError}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => refreshAllData()}
+                disabled={loading}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-semantic-danger hover:bg-semantic-danger/90 rounded-lg transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <span>{loading ? 'Retrying...' : 'Retry Connection'}</span>
+              </button>
+            </div>
+          )}
+
           <PageTransition pageKey={currentPage}>
             {currentPage === 'dashboard' && (
               <DashboardPage

@@ -87,7 +87,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Health
-  health: () => request<{ status: string; service: string }>('/health'),
+  health: (options?: RequestInit) =>
+    request<{ status: string; service: string; version?: string }>('/health', options),
 
   // Dashboard
   dashboard: {

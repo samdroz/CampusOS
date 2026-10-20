@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
+import App from '../App';
 import { SettingsPage } from '../pages/SettingsPage';
 import { PageTransition } from '../components/PageTransition';
 import { Header } from '../components/Header';
@@ -504,6 +505,154 @@ describe('Frontend Business Logic & Validation Test Suite', () => {
         fireEvent.click(screen.getByText('Skip for Now'));
       });
       expect(onSkipMock).toHaveBeenCalled();
+    });
+  });
+
+  // 13. Backend Discovery & Startup Reliability
+  describe('Backend Discovery & Startup Reliability', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      sessionStorage.clear();
+      localStorage.clear();
+      vi.spyOn(api.debug, 'log').mockResolvedValue({ status: 'ok' });
+    });
+
+    it('correctly configures and formats backend API base URL with dynamic ports', async () => {
+      const { setApiBaseUrl, getApiBaseUrl } = await import('../api/client');
+      setApiBaseUrl('http://127.0.0.1:18420');
+      expect(getApiBaseUrl()).toBe('http://127.0.0.1:18420/api');
+
+      setApiBaseUrl('http://127.0.0.1:18420/');
+      expect(getApiBaseUrl()).toBe('http://127.0.0.1:18420/api');
+    });
+
+    it('handles backend readiness failure by rendering connection error without displaying onboarding modal', async () => {
+      // Backend is offline / unreachable
+      vi.spyOn(api, 'health').mockRejectedValue(new Error('Connection refused'));
+
+      render(<App />);
+
+      // Verify connection error state is presented to user
+      const errorText = await screen.findByText(/Failed to connect to CampusOS backend services/i);
+      expect(errorText).toBeTruthy();
+
+      // Onboarding wizard must NEVER be displayed when backend fails
+      expect(screen.queryByText('Start Setup')).toBeNull();
+      expect(screen.queryByText('Offline & Strictly Local Privacy')).toBeNull();
+      expect(screen.getByRole('button', { name: /Retry Connection/i })).toBeTruthy();
+    });
+
+    it('enforces overall readiness deadline and terminates within configured time window', async () => {
+      // Mock health request that hangs until aborted
+      vi.spyOn(api, 'health').mockImplementation(({ signal } = {}) => {
+        return new Promise((_, reject) => {
+          if (signal) {
+            signal.addEventListener('abort', () => reject(new Error('Aborted')));
+          }
+        });
+      });
+
+      const startTime = Date.now();
+      render(<App />);
+
+      // Under test mode, totalDeadlineMs is 100ms. Verify readiness times out and displays error
+      const errorText = await screen.findByText(/Failed to connect to CampusOS backend services/i);
+      expect(errorText).toBeTruthy();
+
+      const elapsed = Date.now() - startTime;
+      // Should terminate promptly within ~1000ms (strictly avoiding the former 47.5s worst case)
+      expect(elapsed).toBeLessThan(1500);
+    });
+
+    it('withholds onboarding and presents error state when profile fetch fails despite healthy backend', async () => {
+      sessionStorage.setItem('campusos_session_started', 'true');
+
+      // Backend health check succeeds, but profile fetch fails
+      vi.spyOn(api, 'health').mockResolvedValue({ status: 'healthy', service: 'CampusOS API', version: '1.0.0' });
+      vi.spyOn(api.profile, 'get').mockRejectedValue(new Error('Internal server error'));
+      vi.spyOn(api.dashboard, 'get').mockResolvedValue(null as any);
+      vi.spyOn(api.subjects, 'list').mockResolvedValue([]);
+      vi.spyOn(api.sessions, 'list').mockResolvedValue([]);
+      vi.spyOn(api.assignments, 'list').mockResolvedValue([]);
+      vi.spyOn(api.exams, 'list').mockResolvedValue([]);
+      vi.spyOn(api.attendance, 'list').mockResolvedValue([]);
+      vi.spyOn(api.attendance, 'summary').mockResolvedValue(null as any);
+      vi.spyOn(api.notes, 'list').mockResolvedValue([]);
+      vi.spyOn(api.settings, 'get').mockResolvedValue({} as any);
+
+      render(<App />);
+
+      // Error banner displays the profile load failure
+      const bannerError = await screen.findByText(/Could not load student profile from backend/i);
+      expect(bannerError).toBeTruthy();
+
+      // Onboarding wizard must not open on profile failure
+      expect(screen.queryByText('Start Setup')).toBeNull();
+      expect(screen.queryByText('Offline & Strictly Local Privacy')).toBeNull();
+    });
+
+    it('clears error and restores dashboard when Retry Connection action succeeds', async () => {
+      // Set session started so error banner renders in main dashboard layout
+      sessionStorage.setItem('campusos_session_started', 'true');
+
+      let isHealthy = false;
+      vi.spyOn(api, 'health').mockImplementation(async () => {
+        if (!isHealthy) throw new Error('Backend starting up');
+        return { status: 'healthy', service: 'CampusOS API', version: '1.0.0' };
+      });
+      vi.spyOn(api.profile, 'get').mockResolvedValue({
+        id: 1,
+        full_name: 'Verified Student',
+        roll_number: 'CS101',
+        department: 'Computer Science',
+        semester: 'Semester 1',
+        academic_year: '2026-2027',
+        attendance_target: 75.0,
+        onboarding_completed: true,
+      });
+      vi.spyOn(api.dashboard, 'get').mockResolvedValue({
+        student_name: 'Verified Student',
+        pending_assignments_count: 2,
+        overdue_assignments_count: 0,
+        completed_assignments_count: 5,
+        upcoming_exams_count: 1,
+        total_subjects_count: 5,
+        overall_attendance_percentage: 88.5,
+        attendance_is_warning: false,
+        warning_threshold: 75.0,
+        today_sessions: [],
+        upcoming_deadlines: [],
+        upcoming_exams: [],
+        recent_notes: [],
+      } as any);
+      vi.spyOn(api.subjects, 'list').mockResolvedValue([]);
+      vi.spyOn(api.sessions, 'list').mockResolvedValue([]);
+      vi.spyOn(api.assignments, 'list').mockResolvedValue([]);
+      vi.spyOn(api.exams, 'list').mockResolvedValue([]);
+      vi.spyOn(api.attendance, 'list').mockResolvedValue([]);
+      vi.spyOn(api.attendance, 'summary').mockResolvedValue(null as any);
+      vi.spyOn(api.notes, 'list').mockResolvedValue([]);
+      vi.spyOn(api.settings, 'get').mockResolvedValue({ theme: 'dark' } as any);
+
+      render(<App />);
+
+      // Initial failure: banner appears with working retry button
+      const bannerError = await screen.findByText(/Backend Connection Issue/i);
+      expect(bannerError).toBeTruthy();
+      expect(screen.getByText('Failed to connect to CampusOS backend services. Please verify that the application backend is running.')).toBeTruthy();
+
+      // Now backend becomes healthy and student clicks Retry Connection
+      isHealthy = true;
+      const retryBtn = screen.getByRole('button', { name: /Retry Connection/i });
+      await act(async () => {
+        fireEvent.click(retryBtn);
+      });
+
+      // Once recovered, error banner is removed from DOM
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 60));
+      });
+      expect(screen.queryByText(/Backend Connection Issue/i)).toBeNull();
     });
   });
 });

@@ -1,5 +1,8 @@
 # CampusOS Desktop Build Script (Windows)
 # Builds standalone backend sidecar, frontend production bundle, and desktop package.
+param(
+    [string]$AppVersion = ""
+)
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "  CampusOS: Reproducible Desktop Build System" -ForegroundColor Cyan
@@ -7,6 +10,30 @@ Write-Host "=============================================" -ForegroundColor Cyan
 
 $ErrorActionPreference = "Stop"
 $RootDir = $PSScriptRoot
+
+# Resolve application version
+if (-not $AppVersion -and $env:CAMPUSOS_VERSION) {
+    $AppVersion = $env:CAMPUSOS_VERSION -replace '^v', ''
+}
+if (-not $AppVersion -and $env:GITHUB_REF_NAME) {
+    if ($env:GITHUB_REF_NAME -match '^v?(\d+\.\d+\.\d+.*)$') {
+        $AppVersion = $Matches[1]
+    }
+}
+if (-not $AppVersion -and (Test-Path "$RootDir\frontend\src-tauri\tauri.conf.json")) {
+    try {
+        $tauriConf = Get-Content "$RootDir\frontend\src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json
+        $AppVersion = $tauriConf.version
+    } catch {}
+}
+if (-not $AppVersion) {
+    $AppVersion = "1.0.0"
+}
+$env:CAMPUSOS_VERSION = $AppVersion
+Set-Content -Path "$RootDir\backend\app\version.py" -Value "# Auto-generated during desktop build`r`n__version__ = '$AppVersion'" -Encoding utf8
+$InstallerName = "CampusOS_${AppVersion}_Setup.exe"
+$InstallerPath = "$RootDir\dist\$InstallerName"
+Write-Host "Target Version: $AppVersion (Installer: dist\$InstallerName)`n" -ForegroundColor Cyan
 
 # Step 1: Python environment and backend test execution
 Write-Host "`n[1/5] Verifying Python backend dependencies..." -ForegroundColor Yellow
@@ -91,18 +118,18 @@ if (-not $MakensisExe -and (Test-Path "$env:LOCALAPPDATA\NSIS")) {
 }
 
 if ($MakensisExe -and (Test-Path $MakensisExe)) {
-    Write-Host "Compiling Windows installer package using $MakensisExe..." -ForegroundColor Yellow
-    Remove-Item -Path "$RootDir\dist\CampusOS_1.0.0_Setup.exe" -Force -ErrorAction SilentlyContinue
-    & $MakensisExe "$RootDir\installer\CampusOS.nsi"
+    Write-Host "Compiling Windows installer package ($InstallerName) using $MakensisExe..." -ForegroundColor Yellow
+    Remove-Item -Path $InstallerPath -Force -ErrorAction SilentlyContinue
+    & $MakensisExe "/DPRODUCT_VERSION=$AppVersion" "$RootDir\installer\CampusOS.nsi"
     if ($LASTEXITCODE -ne 0) {
         Write-Error "NSIS compilation failed with exit code $LASTEXITCODE."
         exit $LASTEXITCODE
     }
-    if (-not (Test-Path "$RootDir\dist\CampusOS_1.0.0_Setup.exe")) {
-        Write-Error "Expected installer dist\CampusOS_1.0.0_Setup.exe was not created."
+    if (-not (Test-Path $InstallerPath)) {
+        Write-Error "Expected installer $InstallerPath was not created."
         exit 1
     }
-    Write-Host "Installer built successfully: dist\CampusOS_1.0.0_Setup.exe" -ForegroundColor Green
+    Write-Host "Installer built successfully: dist\$InstallerName" -ForegroundColor Green
 } else {
     Write-Host "makensis.exe not found in standard directories or PATH. Skipping local NSIS installer generation." -ForegroundColor Yellow
 }
@@ -111,9 +138,9 @@ if ($MakensisExe -and (Test-Path $MakensisExe)) {
 Write-Host "`n=============================================" -ForegroundColor Green
 Write-Host "  CampusOS Desktop Build Completed!" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
-if (Test-Path "$RootDir\dist\CampusOS_1.0.0_Setup.exe") {
-    Write-Host "Installer package:              dist\CampusOS_1.0.0_Setup.exe"
-    Write-Host "To test the installed app:      dist\CampusOS_1.0.0_Setup.exe"
+if (Test-Path $InstallerPath) {
+    Write-Host "Installer package:              dist\$InstallerName"
+    Write-Host "To test the installed app:      dist\$InstallerName"
 } else {
     Write-Host "Installer package:              (Skipped - NSIS not found)"
 }

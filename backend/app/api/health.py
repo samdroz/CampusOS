@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from datetime import datetime
+from backend.app.core.config import settings
 
 router = APIRouter(tags=["Health"])
 
@@ -9,5 +10,5 @@ def health_check():
         "status": "healthy",
         "service": "CampusOS API",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0",
+        "version": settings.APP_VERSION,
     }

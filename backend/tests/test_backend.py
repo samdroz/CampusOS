@@ -715,3 +715,33 @@ def test_31_skipped_onboarding_and_persistence(client):
     })
     assert settings_update.status_code == 200
     assert settings_update.json()["full_name"] == "Later Student"
+
+def test_32_health_endpoint_contract_and_service_info(client):
+    """32. Health check endpoint satisfies contract required by Tauri and C# launcher"""
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    data = res.json()
+    assert "status" in data and data["status"] == "healthy"
+    assert "service" in data and "CampusOS" in data["service"]
+    assert "version" in data and len(data["version"]) > 0
+
+def test_33_dynamic_version_resolution_from_environment(monkeypatch):
+    """33. Health check version dynamically honors CAMPUSOS_VERSION environment variable"""
+    from backend.app.core.config import get_app_version
+    monkeypatch.setenv("CAMPUSOS_VERSION", "v1.0.1")
+    assert get_app_version() == "1.0.1"
+
+    monkeypatch.setenv("CAMPUSOS_VERSION", "2.3.4-beta.1")
+    assert get_app_version() == "2.3.4-beta.1"
+
+def test_34_embedded_package_version_resolution(monkeypatch):
+    """34. Packaged backend resolves version from embedded backend.app.version without environment variables"""
+    import backend.app.version as ver_mod
+    from backend.app.core.config import get_app_version
+
+    # Ensure environment variables are unset as in a packaged desktop launch
+    monkeypatch.delenv("CAMPUSOS_VERSION", raising=False)
+    monkeypatch.delenv("GITHUB_REF_NAME", raising=False)
+
+    monkeypatch.setattr(ver_mod, "__version__", "1.0.5-release")
+    assert get_app_version() == "1.0.5-release"
