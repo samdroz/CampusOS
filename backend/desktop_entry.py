@@ -6,16 +6,53 @@ import logging
 import threading
 import time
 import signal
+import traceback
 from pathlib import Path
+
+# Add repository root to sys.path so 'backend' can be resolved in all execution contexts
+repo_root = Path(__file__).resolve().parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
 # Mark desktop production mode
 os.environ["CAMPUSOS_DESKTOP"] = "1"
 
-from backend.app.core.config import get_app_data_dir, settings
+def write_early_bootstrap_error(error_text: str):
+    """Writes early crash info to %APPDATA%/CampusOS/logs/backend.log before normal logger setup."""
+    try:
+        app_data = os.environ.get("APPDATA")
+        if not app_data:
+            app_data = str(Path.home() / "AppData" / "Roaming")
+        log_dir = Path(app_data) / "CampusOS" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "backend.log"
+        with open(log_file, "a", encoding="utf-8") as f:
+            ts = time.strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"{ts} [FATAL] CampusOS-Backend Early Bootstrap: {error_text}\n")
+    except Exception:
+        pass
 
-def find_available_port(start_port: int = 18000, max_port: int = 18999) -> int:
-    """Finds an available local port on 127.0.0.1."""
-    # First try ephemeral port 0
+try:
+    from backend.app.core.config import get_app_data_dir, settings
+except Exception as exc:
+    err = f"Failed to import core config:\n{traceback.format_exc()}"
+    sys.stderr.write(err + "\n")
+    sys.stderr.flush()
+    write_early_bootstrap_error(err)
+    sys.exit(1)
+
+def find_available_port(start_port: int = 18420, max_port: int = 18999) -> int:
+    """Finds an available local port on 127.0.0.1, preferring the designated range."""
+    # First check designated range
+    for port in range(start_port, max_port + 1):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+                return port
+        except OSError:
+            continue
+
+    # Fallback to ephemeral port 0
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(("127.0.0.1", 0))
@@ -23,15 +60,7 @@ def find_available_port(start_port: int = 18000, max_port: int = 18999) -> int:
     except Exception:
         pass
 
-    # Fallback loop
-    for port in range(start_port, max_port):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(("127.0.0.1", port))
-                return port
-        except OSError:
-            continue
-    return 8000
+    return 18420
 
 def setup_desktop_logging():
     """Sets up persistent error and access logging in the user AppData directory."""
@@ -158,13 +187,28 @@ def main():
     import uvicorn
     from backend.app.main import app
 
-    uvicorn.run(
-        app,
-        host=host,
-        port=port,
-        log_level="info",
-        access_log=False,
-    )
+    try:
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info",
+            access_log=False,
+        )
+    except Exception as exc:
+        err = f"Fatal backend sidecar crash:\n{traceback.format_exc()}"
+        logger.critical(err)
+        sys.stderr.write(err + "\n")
+        sys.stderr.flush()
+        write_early_bootstrap_error(err)
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        err = f"Unhandled exception in main:\n{traceback.format_exc()}"
+        sys.stderr.write(err + "\n")
+        sys.stderr.flush()
+        write_early_bootstrap_error(err)
+        sys.exit(1)

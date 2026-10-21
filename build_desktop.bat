@@ -35,9 +35,8 @@ if %ERRORLEVEL% neq 0 (
 cd ..
 
 echo.
-echo [3/4] Packaging backend standalone executable with PyInstaller...
-if not exist "frontend\src-tauri\binaries" mkdir "frontend\src-tauri\binaries"
-%PYINSTALLER_EXE% --name campusos-backend --onefile --clean --collect-all uvicorn --collect-all fastapi --collect-all pydantic --collect-all sqlalchemy backend\desktop_entry.py
+set "PYTHONPATH=."
+%PYINSTALLER_EXE% --name campusos-backend --onefile --clean --paths . --collect-all backend --collect-all uvicorn --collect-all fastapi --collect-all pydantic --collect-all sqlalchemy --add-data "frontend\dist;frontend/dist" backend\desktop_entry.py
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] PyInstaller packaging failed.
     exit /b %ERRORLEVEL%

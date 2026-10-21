@@ -95,7 +95,10 @@ jobs:
       - name: Package Backend Standalone Executable (PyInstaller)
         run: |
           New-Item -ItemType Directory -Force -Path "frontend\src-tauri\binaries"
+          $env:PYTHONPATH="."
           pyinstaller --name campusos-backend --onefile --clean `
+            --paths . `
+            --collect-all backend `
             --collect-all uvicorn `
             --collect-all fastapi `
             --collect-all pydantic `

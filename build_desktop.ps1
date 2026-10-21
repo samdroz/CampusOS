@@ -67,7 +67,10 @@ if (-not (Test-Path $PyInstallerExe)) {
 }
 
 New-Item -ItemType Directory -Force -Path "$RootDir\frontend\src-tauri\binaries" | Out-Null
+$env:PYTHONPATH = "$RootDir"
 & $PyInstallerExe --name campusos-backend --onefile --clean `
+    --paths "$RootDir" `
+    --collect-all backend `
     --collect-all uvicorn `
     --collect-all fastapi `
     --collect-all pydantic `
