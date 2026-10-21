@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="CampusOS — High-Performance Academic Productivity Platform",
-    version="1.0.0",
+    version=settings.APP_VERSION,
     lifespan=lifespan,
     docs_url="/docs" if settings.DOCS_ENABLED else None,
     redoc_url="/redoc" if settings.DOCS_ENABLED else None,

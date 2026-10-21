@@ -64,7 +64,7 @@ CampusOS combines a modern web frontend with an embedded local backend sidecar p
 | **Primary Desktop Packaging** | PyInstaller (`campusos-backend.exe`), C# / .NET native launcher (`CampusOS.exe`) |
 | **Windows Installer** | NSIS (Nullsoft Scriptable Install System) generating `CampusOS_1.0.1_Setup.exe` |
 | **Auxiliary Desktop Config** | Tauri 2 (`frontend/src-tauri/`) maintained as an auxiliary cross-platform experiment and icon source; not used for the production Windows release installer |
-| **Automated Testing** | pytest (backend: 34 tests), Vitest & Testing Library (frontend: 35 tests) |
+| **Automated Testing** | pytest (backend: 41 tests), Vitest & Testing Library (frontend: 35 tests) |
 
 ### Supported Windows Architecture
 The production Windows release operates through coordinated, decoupled local components:
@@ -236,12 +236,13 @@ From the repository root:
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe -m pytest backend/tests/ -v
 ```
-*Executes 34 automated tests verifying:*
+*Executes 41 automated tests verifying:*
 - Health check endpoints, dynamic port negotiation, and version resolution.
 - Subject, session, timetable, assignment, exam, attendance, and notes CRUD operations.
 - Schedule overlap detection and attendance compliance calculations.
 - First-launch student profile creation, onboarding completion, skip behavior, and debug event logging.
 - Database persistence across restarts and transactional JSON backup/restore.
+- CSRF protections with fail-closed origin validation, custom header enforcement, and dynamic port isolation.
 
 ### Running Frontend Tests
 From the repository root:
@@ -266,7 +267,7 @@ The repository includes a verified CI/CD release workflow at `.github/workflows/
 - **Tag-Triggered Publication:** When a version tag matching `v*` (e.g. `v1.0.1`) is pushed to GitHub (`git tag v1.0.1 && git push origin v1.0.1`), the workflow runs on `windows-latest`:
   1. Resolves the release version from the tag and stamps it into `backend/app/version.py`.
   2. Installs Node.js and Python dependencies.
-  3. Runs backend (34 tests) and frontend (35 tests) automated test suites.
+  3. Runs backend (41 tests) and frontend (35 tests) automated test suites.
   4. Builds the frontend production bundle and packages the backend executable via PyInstaller.
   5. Compiles the native launcher with `csc.exe` and packages the installer via NSIS (`dist\CampusOS_<version>_Setup.exe`).
   6. Validates the generated installer artifact existence and non-zero file size.
@@ -292,7 +293,7 @@ CAMPUSOS/
 │   │   ├── version.py           # Release version stamping module
 │   │   └── main.py              # Application entrypoint & static mounting
 │   ├── tests/
-│   │   └── test_backend.py      # Automated pytest suite (34 tests)
+│   │   └── test_backend.py      # Automated pytest suite (41 tests)
 │   ├── desktop_entry.py         # PyInstaller desktop sidecar launcher
 │   └── requirements.txt         # Python dependencies
 ├── docs/

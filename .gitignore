@@ -8,9 +8,12 @@ env/
 venv/
 .venv/
 *.db
+*.sqlite
 *.sqlite3
 test_*.db
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Node
 node_modules/
@@ -36,6 +39,7 @@ release_assets/
 frontend/src-tauri/target/
 frontend/src-tauri/binaries/*.exe
 *.backup.json
+*.bak
 backend_endpoint.txt
 backend_port.txt
 webview_cache/

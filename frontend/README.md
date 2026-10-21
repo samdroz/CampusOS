@@ -16,7 +16,7 @@ The user interface of CampusOS is built with React 19, TypeScript, Vite, and Tai
 ```
 frontend/
 ├── src/
-│   ├── api/             # Axios client with loopback port resolution (client.ts)
+│   ├── api/             # Native fetch API client with loopback port resolution (client.ts)
 │   ├── assets/          # Static application assets
 │   ├── components/      # UI components (Header, Sidebar, Modals, CommandPalette, etc.)
 │   ├── pages/           # Application views (Dashboard, Timetable, Subjects, etc.)

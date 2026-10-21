@@ -1,6 +1,6 @@
 [package]
 name = "campusos"
-version = "1.0.0"
+version = "1.0.2"
 description = "CampusOS - Local-First Student Life Management Platform"
 authors = ["CampusOS Team"]
 license = "MIT"
