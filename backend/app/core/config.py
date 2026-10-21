@@ -94,7 +94,7 @@ def get_app_version() -> str:
     except Exception:
         pass
 
-    return "1.0.0"
+    return "1.0.2"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CampusOS"

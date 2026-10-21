@@ -28,7 +28,7 @@ if (-not $AppVersion -and (Test-Path "$RootDir\frontend\src-tauri\tauri.conf.jso
     } catch {}
 }
 if (-not $AppVersion) {
-    $AppVersion = "1.0.0"
+    $AppVersion = "1.0.2"
 }
 $env:CAMPUSOS_VERSION = $AppVersion
 Set-Content -Path "$RootDir\backend\app\version.py" -Value "# Auto-generated during desktop build`r`n__version__ = '$AppVersion'" -Encoding utf8

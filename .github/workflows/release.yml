@@ -27,7 +27,7 @@ jobs:
           $appVersion = if ($releaseTag -and $releaseTag -match '^v?(\d+\.\d+\.\d+.*)$') { $Matches[1] } else {
             (Get-Content "frontend\src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json).version
           }
-          if (-not $appVersion) { $appVersion = "1.0.0" }
+          if (-not $appVersion) { $appVersion = "1.0.2" }
           $installerName = "CampusOS_${appVersion}_Setup.exe"
           Write-Host "Resolved release version: $appVersion (Installer: $installerName)" -ForegroundColor Cyan
 
@@ -162,7 +162,7 @@ jobs:
           $appVersion = if ($env:APP_VERSION) { $env:APP_VERSION } elseif ($env:GITHUB_REF_NAME -match '^v?(\d+\.\d+\.\d+.*)$') { $Matches[1] } else {
             (Get-Content "frontend\src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json).version
           }
-          if (-not $appVersion) { $appVersion = "1.0.0" }
+          if (-not $appVersion) { $appVersion = "1.0.2" }
           $installerName = "CampusOS_${appVersion}_Setup.exe"
           Write-Host "Target release installer: $installerName (Version: $appVersion)" -ForegroundColor Cyan
 
