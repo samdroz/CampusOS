@@ -1,6 +1,6 @@
 # CampusOS — Local-First Student Life Management Platform
 
-**CampusOS** is a local-first academic operating system designed for college and university students. Licensed under the permissive MIT License, CampusOS is currently preparing for a planned private v1.0.0 release for early users and testers, with public open-source availability planned for general release. It consolidates enrolled courses, timetables, assignment deadlines, exam countdowns, attendance compliance, and lecture notes into a single high-performance desktop workspace.
+**CampusOS** is a local-first academic operating system designed for college and university students. Licensed under the permissive MIT License, CampusOS is currently in its verified **v1.0.1** release ([download here](https://github.com/samdroz/CampusOS/releases/tag/v1.0.1)). It consolidates enrolled courses, timetables, assignment deadlines, exam countdowns, attendance compliance, and lecture notes into a single high-performance desktop workspace.
 
 CampusOS runs locally on your own computer. Core academic records, schedules, and notes are stored on your local machine in an offline SQLite database—without requiring cloud user accounts, paid subscriptions, or external telemetry services.
 
@@ -62,7 +62,7 @@ CampusOS combines a modern web frontend with an embedded local backend sidecar p
 | **Backend API Engine** | FastAPI, Python 3.11, Pydantic v2, Uvicorn |
 | **Database & Persistence** | SQLite, SQLAlchemy ORM |
 | **Primary Desktop Packaging** | PyInstaller (`campusos-backend.exe`), C# / .NET native launcher (`CampusOS.exe`) |
-| **Windows Installer** | NSIS (Nullsoft Scriptable Install System) generating `CampusOS_1.0.0_Setup.exe` |
+| **Windows Installer** | NSIS (Nullsoft Scriptable Install System) generating `CampusOS_1.0.1_Setup.exe` |
 | **Auxiliary Desktop Config** | Tauri 2 (`frontend/src-tauri/`) maintained as an auxiliary cross-platform experiment and icon source; not used for the production Windows release installer |
 | **Automated Testing** | pytest (backend: 34 tests), Vitest & Testing Library (frontend: 35 tests) |
 
@@ -71,8 +71,8 @@ The production Windows release operates through coordinated, decoupled local com
 1. **Native C# Launcher (`CampusOS.exe`):** A lightweight Windows launcher (`launcher/Program.cs` compiled with .NET `csc.exe`). On startup, it discovers an available local port starting at 18420 (or dynamically selects an ephemeral loopback port), starts the backend sidecar process in the background, continuously polls `/api/health` until the API is ready, and displays the interface in a dedicated, chromeless application window using Microsoft Edge application mode (`--app=http://127.0.0.1:<port>`), with fallback to the default system browser if needed.
 2. **Standalone Backend Executable (`campusos-backend.exe`):** PyInstaller packages the FastAPI application (`backend/desktop_entry.py`) along with the embedded frontend static build (`frontend/dist`) into a single executable. It serves both the local REST API and the static web assets strictly over local loopback (`127.0.0.1`).
 3. **Local SQLite Database (`campusos.db`):** Zero-configuration database stored in the user's roaming application directory (`%APPDATA%\CampusOS\campusos.db`).
-4. **NSIS Installer (`CampusOS_1.0.0_Setup.exe`):** Assembled via `installer/CampusOS.nsi`, bundling the launcher, backend binary, icons, and dependencies into a standard Windows installer with Start Menu shortcuts and a clean uninstaller.
-5. **Auxiliary Tauri Experiment:** While `frontend/src-tauri` is preserved in the repository as an auxiliary exploration target for future cross-platform builds, it is not the active desktop release engine. The shipped, verified v1.0.0 installer uses the C# launcher and PyInstaller NSIS pipeline.
+4. **NSIS Installer (`CampusOS_1.0.1_Setup.exe`):** Assembled via `installer/CampusOS.nsi`, bundling the launcher, backend binary, icons, and dependencies into a standard Windows installer with Start Menu shortcuts and a clean uninstaller.
+5. **Auxiliary Tauri Experiment:** While `frontend/src-tauri` is preserved in the repository as an auxiliary exploration target for future cross-platform builds, it is not the active desktop release engine. The shipped, verified v1.0.1 installer uses the C# launcher and PyInstaller NSIS pipeline.
 
 ---
 
@@ -81,16 +81,16 @@ The production Windows release operates through coordinated, decoupled local com
 CampusOS is packaged as a standalone Windows desktop application. End users **do not need** to install Python, Node.js, or external database software.
 
 ### Obtaining the Installer:
-- During the initial private v1.0.0 release, the installer is available only to authorized recipients and project participants once finalized.
-- The expected installer filename for the planned v1.0.0 release is:
+- Download the official installer package from the [CampusOS v1.0.1 Release](https://github.com/samdroz/CampusOS/releases/tag/v1.0.1).
+- The verified release asset is:
   ```
-  CampusOS_1.0.0_Setup.exe
+  CampusOS_1.0.1_Setup.exe
   ```
-- The CampusOS installer will become publicly downloadable only when the project reaches its public launch and the repository is made public. In the interim, authorized developers can compile the application and installer locally from source using the instructions below.
+- Alternatively, developers can compile the application and installer locally from source using the instructions below.
 
 ### Step-by-Step Installation:
-1. Once received as an authorized recipient (or after compiling locally from source), locate `CampusOS_1.0.0_Setup.exe`.
-2. Double-click `CampusOS_1.0.0_Setup.exe` to run the setup wizard.
+1. Download or locate `CampusOS_1.0.1_Setup.exe`.
+2. Double-click `CampusOS_1.0.1_Setup.exe` to run the setup wizard.
    - *Note:* If Windows Defender SmartScreen displays an alert ("Windows protected your PC"), click **More info** followed by **Run anyway**. This prompt appears for newly compiled software that has not yet established Microsoft reputation or acquired a commercial code-signing certificate.
 3. Follow the setup prompts to choose your destination directory (defaults to `%LOCALAPPDATA%\Programs\CampusOS`).
 4. Once installation completes, launch **CampusOS** from your Desktop shortcut or Start Menu.
@@ -145,7 +145,7 @@ CampusOS is built around a local-first operational model:
 
 To contribute to CampusOS or run it directly from source code:
 
-> **Repository Access Note:** While preparing for the planned private v1.0.0 release, access to the repository requires authorized GitHub account membership. Public cloning will be enabled upon public launch.
+> **Release Note:** The current release is **v1.0.1**, which includes a verified fix for the Windows desktop startup handshake.
 
 ### Prerequisites
 - **Python:** 3.11 or higher
@@ -220,7 +220,7 @@ powershell -ExecutionPolicy Bypass -File .\build_desktop.ps1
 *(Or run `.\build_desktop.bat` from Command Prompt).*
 
 ### Build Outputs (in `dist/`):
-- `dist\CampusOS_1.0.0_Setup.exe` — The full NSIS standalone installer.
+- `dist\CampusOS_<version>_Setup.exe` (e.g., `dist\CampusOS_1.0.1_Setup.exe`) — The full NSIS standalone installer.
 - `dist\CampusOS.exe` — The native Windows launcher executable.
 - `dist\campusos-backend.exe` — Standalone backend executable with embedded static frontend.
 
@@ -263,7 +263,7 @@ npm --prefix frontend test
 
 The repository includes a verified CI/CD release workflow at `.github/workflows/release.yml`:
 
-- **Tag-Triggered Publication:** When a version tag matching `v*` (e.g. `v1.0.0`) is pushed to GitHub (`git tag v1.0.0 && git push origin v1.0.0`), the workflow runs on `windows-latest`:
+- **Tag-Triggered Publication:** When a version tag matching `v*` (e.g. `v1.0.1`) is pushed to GitHub (`git tag v1.0.1 && git push origin v1.0.1`), the workflow runs on `windows-latest`:
   1. Resolves the release version from the tag and stamps it into `backend/app/version.py`.
   2. Installs Node.js and Python dependencies.
   3. Runs backend (34 tests) and frontend (35 tests) automated test suites.
@@ -345,7 +345,7 @@ CAMPUSOS/
 
 CampusOS is licensed under the permissive **MIT License**. See the [LICENSE](LICENSE) file for complete details.
 
-During preparation for the planned private v1.0.0 release, repository access and development are restricted to authorized project participants. Contributions, bug reports, and feature requests will be warmly welcomed from the wider community upon the upcoming public release!
+Contributions, bug reports, and feedback for CampusOS v1.0.1 are welcome! Please submit issues or pull requests through GitHub.
 
 ---
 

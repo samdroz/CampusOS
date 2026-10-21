@@ -101,11 +101,12 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.DOCS_ENABLED else None,
 )
 
-# CORS configuration - restricted to local origins and regex match for 127.0.0.1 / localhost on any port
+from backend.app.core.security import CampusOSCORSMiddleware
+
+# CORS configuration - dynamically enforced via CampusOS origin policy
 app.add_middleware(
-    CORSMiddleware,
+    CampusOSCORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"^https?://(127\.0\.0\.1|localhost)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

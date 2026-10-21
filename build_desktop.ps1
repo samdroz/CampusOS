@@ -1,7 +1,8 @@
 # CampusOS Desktop Build Script (Windows)
 # Builds standalone backend sidecar, frontend production bundle, and desktop package.
 param(
-    [string]$AppVersion = ""
+    [string]$AppVersion = "",
+    [switch]$SkipInstaller = $false
 )
 
 Write-Host "=============================================" -ForegroundColor Cyan
@@ -33,6 +34,10 @@ $env:CAMPUSOS_VERSION = $AppVersion
 Set-Content -Path "$RootDir\backend\app\version.py" -Value "# Auto-generated during desktop build`r`n__version__ = '$AppVersion'" -Encoding utf8
 $InstallerName = "CampusOS_${AppVersion}_Setup.exe"
 $InstallerPath = "$RootDir\dist\$InstallerName"
+# Remove any existing target installer to avoid retaining stale artifacts on early failure (BLD-01)
+if (Test-Path $InstallerPath) {
+    Remove-Item -Path $InstallerPath -Force -ErrorAction SilentlyContinue
+}
 Write-Host "Target Version: $AppVersion (Installer: dist\$InstallerName)`n" -ForegroundColor Cyan
 
 # Step 1: Python environment and backend test execution
@@ -89,52 +94,92 @@ Write-Host "Standalone backend sidecar created at dist\campusos-backend.exe" -Fo
 
 # Step 4: Build Native Launcher & NSIS Windows Installer
 Write-Host "`n[4/5] Building Native Windows Launcher and NSIS Installer..." -ForegroundColor Yellow
-$CscExe = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-if (Test-Path $CscExe) {
-    Write-Host "Compiling native Windows launcher (dist\CampusOS.exe)..." -ForegroundColor Yellow
-    & $CscExe /target:winexe /win32icon:"$RootDir\frontend\src-tauri\icons\icon.ico" /out:"$RootDir\dist\CampusOS.exe" "$RootDir\launcher\Program.cs"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "C# Launcher compilation failed with exit code $LASTEXITCODE."
-        exit $LASTEXITCODE
+
+$LauncherPath = "$RootDir\dist\CampusOS.exe"
+# Remove stale launcher binary to prevent packaging an obsolete executable
+if (Test-Path $LauncherPath) {
+    Remove-Item -Path $LauncherPath -Force -ErrorAction SilentlyContinue
+}
+
+$CscCandidates = @(
+    "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+    "C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+)
+$CscExe = $CscCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $CscExe) {
+    $cmd = Get-Command csc.exe -ErrorAction SilentlyContinue
+    if ($cmd) { $CscExe = $cmd.Source }
+}
+
+if (-not $CscExe -or -not (Test-Path $CscExe)) {
+    Write-Error "FATAL: C# compiler (csc.exe) not found in standard .NET Framework directories or PATH. Native launcher compilation cannot proceed."
+    exit 1
+}
+
+Write-Host "Compiling native Windows launcher (dist\CampusOS.exe) using $CscExe..." -ForegroundColor Yellow
+& $CscExe /target:winexe /win32icon:"$RootDir\frontend\src-tauri\icons\icon.ico" /out:"$LauncherPath" "$RootDir\launcher\Program.cs"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "FATAL: C# Launcher compilation failed with exit code $LASTEXITCODE."
+    exit $LASTEXITCODE
+}
+if (-not (Test-Path $LauncherPath)) {
+    Write-Error "FATAL: Native launcher dist\CampusOS.exe was not created."
+    exit 1
+}
+Write-Host "Native launcher compiled successfully: dist\CampusOS.exe" -ForegroundColor Green
+
+if (-not $SkipInstaller) {
+    $MakensisCandidates = @(
+        "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
+        "$env:ProgramFiles\NSIS\makensis.exe",
+        "$env:LOCALAPPDATA\NSIS\nsis-3.10\Bin\makensis.exe",
+        "$env:LOCALAPPDATA\NSIS\nsis-3.10\makensis.exe",
+        "$env:ChocolateyInstall\bin\makensis.exe"
+    )
+    $MakensisExe = $MakensisCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $MakensisExe) {
+        $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
+        if ($cmd) { $MakensisExe = $cmd.Source }
     }
-    if (-not (Test-Path "$RootDir\dist\CampusOS.exe")) {
-        Write-Error "Native launcher dist\CampusOS.exe was not created."
+    if (-not $MakensisExe -and (Test-Path "$env:LOCALAPPDATA\NSIS")) {
+        $found = Get-ChildItem -Path "$env:LOCALAPPDATA\NSIS" -Filter "makensis.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
+        if ($found) { $MakensisExe = $found }
+    }
+
+    if (-not $MakensisExe -or -not (Test-Path $MakensisExe)) {
+        Write-Error "FATAL: NSIS compiler (makensis.exe) not found in standard installation directories or PATH. Installer generation cannot proceed."
         exit 1
     }
-}
 
-$MakensisCandidates = @(
-    "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
-    "$env:ProgramFiles\NSIS\makensis.exe",
-    "$env:LOCALAPPDATA\NSIS\nsis-3.10\Bin\makensis.exe",
-    "$env:LOCALAPPDATA\NSIS\nsis-3.10\makensis.exe",
-    "$env:ChocolateyInstall\bin\makensis.exe"
-)
-$MakensisExe = $MakensisCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $MakensisExe) {
-    $cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
-    if ($cmd) { $MakensisExe = $cmd.Source }
-}
-if (-not $MakensisExe -and (Test-Path "$env:LOCALAPPDATA\NSIS")) {
-    $found = Get-ChildItem -Path "$env:LOCALAPPDATA\NSIS" -Filter "makensis.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
-    if ($found) { $MakensisExe = $found }
-}
+    # Verify all required inputs exist prior to installer compilation
+    $RequiredInputs = @(
+        $LauncherPath,
+        "$RootDir\dist\campusos-backend.exe",
+        "$RootDir\frontend\dist\index.html",
+        "$RootDir\frontend\src-tauri\icons\icon.ico",
+        "$RootDir\installer\CampusOS.nsi"
+    )
+    foreach ($req in $RequiredInputs) {
+        if (-not (Test-Path $req)) {
+            Write-Error "FATAL: Required installer packaging input was not found: $req"
+            exit 1
+        }
+    }
 
-if ($MakensisExe -and (Test-Path $MakensisExe)) {
     Write-Host "Compiling Windows installer package ($InstallerName) using $MakensisExe..." -ForegroundColor Yellow
     Remove-Item -Path $InstallerPath -Force -ErrorAction SilentlyContinue
     & $MakensisExe "/DPRODUCT_VERSION=$AppVersion" "$RootDir\installer\CampusOS.nsi"
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "NSIS compilation failed with exit code $LASTEXITCODE."
+        Write-Error "FATAL: NSIS compilation failed with exit code $LASTEXITCODE."
         exit $LASTEXITCODE
     }
     if (-not (Test-Path $InstallerPath)) {
-        Write-Error "Expected installer $InstallerPath was not created."
+        Write-Error "FATAL: Expected installer $InstallerPath was not created."
         exit 1
     }
     Write-Host "Installer built successfully: dist\$InstallerName" -ForegroundColor Green
 } else {
-    Write-Host "makensis.exe not found in standard directories or PATH. Skipping local NSIS installer generation." -ForegroundColor Yellow
+    Write-Host "Skipping NSIS installer creation (-SkipInstaller switch specified)." -ForegroundColor Yellow
 }
 
 # Step 5: Summary
@@ -145,7 +190,7 @@ if (Test-Path $InstallerPath) {
     Write-Host "Installer package:              dist\$InstallerName"
     Write-Host "To test the installed app:      dist\$InstallerName"
 } else {
-    Write-Host "Installer package:              (Skipped - NSIS not found)"
+    Write-Host "Installer package:              (Skipped via -SkipInstaller)"
 }
 Write-Host "Native launcher executable:     dist\CampusOS.exe"
 Write-Host "Backend standalone executable:  dist\campusos-backend.exe"

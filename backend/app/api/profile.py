@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from datetime import datetime
 from backend.app.core.database import get_db
+from backend.app.core.security import verify_csrf_protection
 from backend.app.models.models import (
     StudentProfile, Setting, Subject, ClassSession, Assignment, Exam, AttendanceRecord, Note
 )
@@ -265,7 +266,12 @@ def skip_onboarding(db: Session = Depends(get_db)):
     }
 
 @router.post("/reset", response_model=Dict[str, Any])
-def reset_local_data(payload: Dict[str, Any] = Body(...), db: Session = Depends(get_db)):
+def reset_local_data(
+    request: Request,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+):
+    verify_csrf_protection(request)
     if not payload.get("confirm", False):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

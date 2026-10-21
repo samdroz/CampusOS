@@ -135,6 +135,8 @@ def main():
     if not port or port <= 0:
         port = find_available_port()
 
+    os.environ["CAMPUSOS_DESKTOP_PORT"] = str(port)
+
     # Import diagnostic logger
     from backend.app.main import write_onboarding_debug_log, BUILD_ID
     write_onboarding_debug_log(

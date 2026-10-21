@@ -50,6 +50,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const headers = {
     'Content-Type': 'application/json',
+    'X-CampusOS-Request': '1',
     ...(options.headers || {}),
   };
 
@@ -307,6 +308,7 @@ export const api = {
     seed: () =>
       request<{ status: string; message: string; counts: any }>('/seed', {
         method: 'POST',
+        body: JSON.stringify({ confirm: true }),
       }),
   },
 

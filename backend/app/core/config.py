@@ -1,8 +1,21 @@
 import os
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+def get_desktop_port() -> Optional[int]:
+    """
+    Returns the explicitly configured or detected desktop listening port.
+    In packaged desktop mode, this is passed via CAMPUSOS_DESKTOP_PORT.
+    """
+    val = os.environ.get("CAMPUSOS_DESKTOP_PORT")
+    if val:
+        try:
+            return int(val)
+        except ValueError:
+            pass
+    return None
 
 def get_app_data_dir() -> Path:
     """Returns the OS-appropriate per-user application data directory for CampusOS."""
@@ -100,6 +113,7 @@ class Settings(BaseSettings):
     ]
     DEFAULT_ATTENDANCE_THRESHOLD: float = 75.0
     DOCS_ENABLED: bool = not (getattr(sys, "frozen", False) or os.environ.get("CAMPUSOS_DESKTOP") == "1")
+    DESKTOP_PORT: Optional[int] = get_desktop_port()
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
